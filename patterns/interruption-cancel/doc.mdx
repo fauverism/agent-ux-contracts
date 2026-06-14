@@ -1,0 +1,68 @@
+---
+pattern: interruption-cancel
+---
+
+Stopping a text stream is easy: the only artifact is text, and
+streaming-response owns that case. Cancelling *agent work* is harder because
+the work touches the world. Three emails are already sent when the user
+clicks cancel on "drafting 7 emails" — and the host's abort is asynchronous,
+so for a moment the UI knows something the backend hasn't confirmed yet.
+
+This contract resolves that moment in the user's favor. Cancel acknowledges
+*synchronously* — the click lands, the UI says "Cancelling…" — because a
+button that waits for the abort round-trip reads as broken and invites rage
+clicks. From that point the component never re-enters the running state, no
+matter what late tool results arrive; a cancellation the UI silently
+abandons is worse than no cancel button at all. And when the dust settles,
+the summary is honest twice over: it lists the side effects that already
+happened (cancel stops future work; it doesn't unsend email), and if the
+work actually finished before the cancellation took effect, it says so
+instead of pretending the cancel won the race.
+
+Two deliberate inversions of common practice: cancel is **never** gated
+behind a confirmation dialog (it's the safe action — every second in a
+dialog is another side effect landing), and the cancel control's accessible
+name carries the work it governs, because "button, Cancel" in a page of
+controls tells a screen reader user nothing.
+
+## Using the implementations
+
+```tsx
+import { InterruptionCancel } from './react/InterruptionCancel';
+
+const controller = useRef(new AbortController());
+
+<InterruptionCancel
+  workLabel="drafting 7 emails"
+  running={running}
+  outcome={outcome}           // 'completed' if it finished despite the cancel
+  progress={`Step ${step} of 7`}
+  completedWork={sent.map((s) => `Email to ${s} sent`)}
+  stoppedWork={pending.map((p) => `Email to ${p}`)}
+  onCancel={() => controller.current.abort()}
+/>
+```
+
+```js
+import { InterruptionCancel } from './vanilla/InterruptionCancel.js';
+
+const ic = new InterruptionCancel({
+  workLabel: 'drafting 7 emails',
+  onCancel: () => controller.abort(),
+});
+ic.mount('#work');
+ic.start();
+ic.setProgress('Step 2 of 7');
+// when the host settles:
+ic.finish({ completedWork: ['Email to Ana sent'], stoppedWork: ['Email to Ben'] });
+```
+
+## Agent notes
+
+Wire `onCancel` to a real abort mechanism before rendering the control — a
+cancel that stops nothing is worse than none. Never confirm cancellation
+with a dialog. Never let post-cancel progress flip the state back to
+running. Report completed side effects in the outcome summary, and disclose
+the race when work finishes before the cancel lands. Pair with
+approval-gate for consent *before* side effects; this pattern is the
+emergency brake *during* them.

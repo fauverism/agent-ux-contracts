@@ -1,0 +1,48 @@
+---
+pattern: source-attribution
+---
+
+Citations are the difference between "the model said so" and "here's where this
+came from." But citation UI fails in quiet ways: anchors that only work on
+hover, links to sources nobody can access, the same source padded in five
+times, and reasoning passages dressed up to look as grounded as retrieved
+facts.
+
+This pattern ships as a kit rather than a single component, because citations
+weave through host-rendered prose: `CitationAnchor` for inline markers,
+`SourceList` for the consolidated bibliography, `UncitedPassage` to label
+ungrounded reasoning, and `consolidateSources` as the dedupe step both lean on.
+
+The structural choice worth defending: anchors are real links rendered as
+superscript bracketed numbers. Real links because keyboard operability comes
+free and middle-click/new-tab behaviors work; brackets because the affordance
+survives color blindness, high-contrast modes, and grayscale printing.
+
+## Using the implementations
+
+```tsx
+import { CitationAnchor, SourceList, UncitedPassage } from './react/SourceAttribution';
+
+<p>
+  Revenue grew 12% in Q3
+  <CitationAnchor index={1} source={sources[0]} />
+  . <UncitedPassage>This likely reflects seasonal demand.</UncitedPassage>
+</p>
+<SourceList sources={sources} />
+```
+
+```js
+import { SourceAttribution } from './vanilla/SourceAttribution.js';
+
+const attribution = new SourceAttribution({ sources });
+paragraph.append(attribution.createAnchor('q3-report'));
+attribution.renderList('#sources');
+```
+
+## Agent notes
+
+Number anchors from the *consolidated* list — if two claims share a source,
+they share an index. Never cite what you can't link: a citation to a private
+document misleads more than no citation. And when generating mixed
+retrieval-plus-reasoning output, wrap the reasoning in the uncited affordance
+rather than letting it borrow credibility from its neighbors.

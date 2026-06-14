@@ -1,0 +1,201 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "confidence-indicator",
+  "version": "0.1.1",
+  "name": "Confidence Indicator",
+  "summary": "Communicate model certainty levels in text or structured output, from high confidence to uncertainty to refusal, so users know how much to trust the response.",
+  "status": "draft",
+  "category": "transparency",
+  "aliases": [
+    "certainty signal",
+    "confidence badge",
+    "uncertainty label",
+    "how sure is the model"
+  ],
+  "tags": [
+    "reasoning",
+    "explainability",
+    "trust",
+    "calibration"
+  ],
+  "problem": "Model responses arrive without metadata about how reliable they are. Users cannot distinguish between high-confidence answers and best-guess speculation, leading to misplaced trust in unreliable output or unwarranted skepticism of good answers.",
+  "useWhen": [
+    "The model can express different levels of certainty about its output",
+    "Users need to weight the response confidence against the stakes of their decision",
+    "The output mixes factual retrieval with extrapolation or reasoning"
+  ],
+  "dontUseWhen": [
+    "The model cannot articulate its own uncertainty (no confidence or reasoning metadata available)",
+    "All outputs are equally trusted or equally distrusted by design",
+    "Displaying uncertainty would create unwarranted anxiety without actionable recourse"
+  ],
+  "anatomy": [
+    {
+      "id": "indicator-visual",
+      "description": "The visual element (icon, badge, color, meter) that represents confidence level.",
+      "required": true
+    },
+    {
+      "id": "indicator-label",
+      "description": "The text label or aria-label that describes the confidence level in plain language.",
+      "required": true
+    },
+    {
+      "id": "expandable-detail",
+      "description": "Optional section that users can expand to see why the model expressed this confidence level.",
+      "required": false
+    },
+    {
+      "id": "caveat-region",
+      "description": "If confidence is low or conditional, the space where limitations or caveats are displayed.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "high-confidence",
+      "description": "The model is highly confident in the response.",
+      "initial": true
+    },
+    {
+      "id": "moderate-confidence",
+      "description": "The model has moderate confidence; the answer is plausible but not certain."
+    },
+    {
+      "id": "low-confidence",
+      "description": "The model is uncertain and signals this explicitly."
+    },
+    {
+      "id": "conditional",
+      "description": "The model's confidence depends on unstated assumptions; caveat region is populated."
+    },
+    {
+      "id": "refusal",
+      "description": "The model declined to answer; reason is provided."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "no-false-confidence",
+      "level": "MUST",
+      "category": "content",
+      "statement": "The confidence indicator MUST represent the model's actual confidence without overstating it; calibration toward uncertainty is safer than toward false certainty.",
+      "rationale": "Miscalibrated confidence (showing high when actual is low) erodes user trust permanently once discovered; the cost of false negatives (low when high) is lower.",
+      "verification": "Human review comparing model's stated confidence against ground truth for a representative sample."
+    },
+    {
+      "id": "accessible-confidence",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Confidence level MUST be communicated via text label or aria-label, not color or icon alone.",
+      "rationale": "Color-blind and screen reader users cannot perceive confidence from visual cues alone.",
+      "verification": "Unit test asserting the indicator element has aria-label or accessible text content matching confidence level."
+    },
+    {
+      "id": "keyboard-expandable",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "If an expandable detail region exists, it MUST be keyboard-accessible and focusable.",
+      "rationale": "Keyboard and assistive technology users must be able to reach and interact with caveats and reasoning.",
+      "verification": "E2E test: Tab to the expandable region and verify it can be opened via Enter or Space."
+    },
+    {
+      "id": "refusal-explicit",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "In the refusal state, the reason for refusal SHOULD be displayed alongside the refusal indicator.",
+      "rationale": "Users are less frustrated by refusal when they understand why; transparency reduces perceived arbitrariness.",
+      "verification": "Manual review: verify that refusal states include an explanation of why the model declined."
+    },
+    {
+      "id": "no-jargon",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Confidence levels SHOULD be labeled in plain language (e.g., 'likely', 'uncertain', 'can't determine') rather than numerical scores or model-internal concepts.",
+      "rationale": "Users do not calibrate on confidence scores; plain language is more actionable and universally understood.",
+      "verification": "Code review: verify that confidence labels in the component use plain language, not numeric or jargon terms."
+    },
+    {
+      "id": "consistent-semantics",
+      "level": "MUST",
+      "category": "interaction",
+      "statement": "Confidence labels MUST be consistent throughout the UI; the same term always means the same confidence level.",
+      "rationale": "Inconsistent terminology leads users to misinterpret confidence, undermining the entire pattern.",
+      "verification": "Unit test: verify that a mapping of labels to confidence levels exists and is applied uniformly."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "1.4.3",
+        "name": "Contrast (Minimum)",
+        "level": "AA",
+        "relevance": "If confidence is indicated by color alone, contrast must meet WCAG AA for distinguishability."
+      },
+      {
+        "criterion": "1.4.11",
+        "name": "Non-text Contrast",
+        "level": "AA",
+        "relevance": "Icons representing confidence levels must have sufficient contrast."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "Confidence indicators and any expandable regions must have accessible names and roles."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches the confidence indicator and any expandable details in document order."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Toggles the expandable detail region if present."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Confidence indicator is focused",
+        "behavior": "Screen reader announces the confidence level (e.g., 'high confidence') and whether details are available."
+      },
+      {
+        "when": "Detail region expands",
+        "behavior": "Screen reader announces the region as expanded and reads the caveat or reasoning."
+      }
+    ],
+    "focusManagement": "Focus is never stolen by the indicator itself; expandable regions are keyboard-accessible in natural tab order.",
+    "reducedMotion": "Expand/collapse animations are disabled under prefers-reduced-motion; regions appear and disappear instantly."
+  },
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
+  "guidance": {
+    "do": [
+      "Place the indicator near the output it qualifies, not separated in a sidebar.",
+      "Use icon + label combinations so color is never the only signal.",
+      "Pair uncertainty with actionable next steps: 'uncertain — try rephrasing your prompt' or 'uncertain — regenerate'"
+    ],
+    "dont": [
+      "Do not use numerical confidence scores (0–100) without translating them to plain language.",
+      "Do not hide low confidence in a collapsed region; lead with it so users see the caveat immediately.",
+      "Do not use generic 'learn more' links; explain *what* makes the answer uncertain."
+    ]
+  },
+  "relatedPatterns": [
+    "streaming-response"
+  ],
+  "references": [
+    {
+      "title": "Calibration of Confidence",
+      "url": "https://en.wikipedia.org/wiki/Calibration_(statistics)",
+      "note": "Understanding why model calibration matters for user trust."
+    },
+    {
+      "title": "WCAG 2.2 Understanding 1.4.3: Contrast (Minimum)",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+---
+pattern: confidence-indicator
+---
+
+Model output arrives wearing the same typography whether it's retrieval-backed
+fact or best-guess extrapolation. Users can't recalibrate per sentence, so they
+pick one trust level for the whole product — usually the wrong one in both
+directions. A confidence indicator gives them a per-response signal they can
+actually act on.
+
+The pattern's hardest rule isn't visual: `no-false-confidence` says the
+indicator must never overstate what the model actually knows. That's a data
+contract as much as a UI one. The component renders whatever level it's given
+faithfully; if your scoring layer maps everything to "high", no amount of UI
+makes that honest.
+
+The second design decision that matters: labels are plain language, mapped
+through one exported table (`CONFIDENCE_LABELS`). "Likely" and "Uncertain" beat
+"87%" because users don't calibrate on percentages, and a single source of
+truth means the same word never means two different things on two screens.
+
+## Using the implementations
+
+```tsx
+import { ConfidenceIndicator } from './react/ConfidenceIndicator';
+
+<ConfidenceIndicator
+  level="conditional"
+  detail="Based on your 2024 filings; 2025 data wasn't available."
+  caveats={['Assumes filing status is unchanged']}
+/>
+```
+
+```js
+import { ConfidenceIndicator } from './vanilla/ConfidenceIndicator.js';
+
+new ConfidenceIndicator({ level: 'refusal', refusalReason: 'This needs a licensed professional.' })
+  .mount('#confidence');
+```
+
+## Agent notes
+
+Place the indicator adjacent to the content it qualifies — a confidence badge
+in a distant corner reads as decoration. If you find yourself generating
+numeric scores into the label, stop: translate to the plain-language levels and
+put numbers (if you must) in the detail disclosure. Refusals always carry a
+reason; an unexplained "Can't answer" is the pattern failing at its own job.

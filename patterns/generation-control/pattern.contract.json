@@ -1,0 +1,188 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "generation-control",
+  "version": "0.1.0",
+  "name": "Generation Control",
+  "summary": "Give users explicit control over generated output — regenerate, browse variants, refine — without ever silently destroying a result they might have wanted.",
+  "status": "draft",
+  "category": "control",
+  "aliases": ["regenerate", "variants", "reroll", "refinement controls"],
+  "tags": ["iteration", "versioning", "non-determinism", "comparison"],
+  "problem": "First generations are rarely final. Without explicit regenerate and refine affordances, users either settle for mediocre output or restart from scratch and lose the thread. Worse, naive regeneration replaces the previous output in place — and because generation is non-deterministic, an overwritten result may be unrecoverable.",
+  "useWhen": [
+    "Output quality varies run to run and users benefit from another attempt",
+    "Users need to compare alternatives before committing to one",
+    "Small instruction tweaks should refine output without rebuilding the whole prompt"
+  ],
+  "dontUseWhen": [
+    "Output is deterministic, where regenerate would produce the identical result",
+    "Each generation has significant cost or side effects and iteration should be deliberate rather than one click away",
+    "The flow requires exactly one canonical result and alternatives would create ambiguity about which is authoritative"
+  ],
+  "anatomy": [
+    {
+      "id": "regenerate-control",
+      "description": "The control that requests a new generation from the same input.",
+      "required": true
+    },
+    {
+      "id": "variant-navigator",
+      "description": "Controls to move between generated alternatives, with a position label such as '2 of 3'.",
+      "required": true
+    },
+    {
+      "id": "variant-status",
+      "description": "Non-visual status surface (live region) reporting generation progress and the displayed variant.",
+      "required": true
+    },
+    {
+      "id": "refine-input",
+      "description": "Optional field for a short adjustment instruction carried into the next generation.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "generated",
+      "description": "A variant is displayed; controls are available.",
+      "initial": true,
+      "transitionsTo": ["regenerating"]
+    },
+    {
+      "id": "regenerating",
+      "description": "A new variant is being produced; controls reflect the busy state.",
+      "transitionsTo": ["generated", "failed"]
+    },
+    {
+      "id": "failed",
+      "description": "Regeneration failed; the previous variant remains displayed and usable.",
+      "transitionsTo": ["regenerating"]
+    }
+  ],
+  "constraints": [
+    {
+      "id": "no-silent-destruction",
+      "level": "MUST_NOT",
+      "category": "resilience",
+      "statement": "Regenerating MUST NOT irrecoverably discard the previous output; prior variants remain reachable through history or undo.",
+      "rationale": "Generation is non-deterministic — an overwritten variant may never be reproducible, so in-place replacement is data loss.",
+      "verification": "E2E test: regenerate, then navigate back and assert the prior variant is intact."
+    },
+    {
+      "id": "variant-position-visible",
+      "level": "MUST",
+      "category": "content",
+      "statement": "When multiple variants exist, the component MUST indicate which variant is displayed and how many exist.",
+      "rationale": "Without a position label users cannot tell whether they are comparing alternatives or staring at the same output twice.",
+      "verification": "Unit test: after two generations the navigator renders '2 of 2' and updates as the user navigates."
+    },
+    {
+      "id": "single-flight-regeneration",
+      "level": "MUST",
+      "category": "state",
+      "statement": "While a regeneration is in flight, the component MUST prevent duplicate concurrent requests and expose the busy state accessibly.",
+      "rationale": "Impatient repeat clicks queue surprise generations that arrive seconds later, each costing money and overwriting context.",
+      "verification": "Unit test: activating regenerate twice while busy invokes the callback once; the control exposes aria-disabled or aria-busy."
+    },
+    {
+      "id": "controls-keyboard-operable",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "All generation controls MUST be keyboard-operable with accessible names.",
+      "rationale": "Regeneration and variant browsing are core interactions, not mouse-only conveniences.",
+      "verification": "Axe check plus keyboard E2E: regenerate and both navigation controls are operable via Tab and Enter or Space."
+    },
+    {
+      "id": "variant-change-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Switching variants and completing a regeneration MUST update an accessible status describing the displayed variant.",
+      "rationale": "A screen reader user paging through visually-swapped content otherwise has no signal that anything changed.",
+      "verification": "Unit test: the live region text updates to 'Variant 2 of 3' on navigation and on new-variant arrival."
+    },
+    {
+      "id": "refine-carries-context",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Refinement SHOULD carry the original prompt and context forward so users adjust the previous attempt rather than restart.",
+      "rationale": "The value of refine over re-prompt is preserved context; dropping it silently turns refinement into a blank-slate retry.",
+      "verification": "Integration test: the refine instruction is appended to, not substituted for, the original generation context."
+    },
+    {
+      "id": "side-by-side-compare",
+      "level": "MAY",
+      "category": "interaction",
+      "statement": "Implementations MAY offer a side-by-side comparison view of two variants.",
+      "rationale": "Sequential paging taxes working memory; direct comparison is how people actually choose between alternatives.",
+      "verification": "Design review: comparison view, if present, preserves all single-variant constraints."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "2.1.1",
+        "name": "Keyboard",
+        "level": "A",
+        "relevance": "Regenerate and variant navigation must be fully operable without a pointer."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "Controls must expose names, and the busy state must be programmatically determinable."
+      },
+      {
+        "criterion": "4.1.3",
+        "name": "Status Messages",
+        "level": "AA",
+        "relevance": "Generation progress and variant changes are status updates that must reach assistive technology without focus moves."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches regenerate, previous, and next controls in document order."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Activates the focused control."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Regeneration starts",
+        "behavior": "Polite announcement that a new variant is being generated."
+      },
+      {
+        "when": "New variant arrives or user navigates",
+        "behavior": "Polite announcement of the displayed variant position, e.g. 'Variant 3 of 3'."
+      }
+    ],
+    "focusManagement": "Focus stays where the user put it; new variants render without focus moves, and navigation controls retain focus when activated.",
+    "reducedMotion": "No crossfade or slide transitions between variants under prefers-reduced-motion; content swaps instantly."
+  },
+  "implementations": ["react", "vanilla"],
+  "guidance": {
+    "do": [
+      "Keep the previous variant on screen until the new one is ready; never show a blank gap.",
+      "Label regenerate with what it does — 'Try again' or 'New version' — near the output it affects.",
+      "Disable navigation at the ends of history rather than wrapping silently."
+    ],
+    "dont": [
+      "Do not overwrite the displayed variant in place with no path back.",
+      "Do not fire regeneration from hover or single accidental keypresses.",
+      "Do not reset the user's refine instruction after each generation."
+    ]
+  },
+  "relatedPatterns": ["streaming-response", "error-recovery"],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 4.1.3: Status Messages",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+    },
+    {
+      "title": "ARIA Authoring Practices Guide: Button pattern",
+      "url": "https://www.w3.org/WAI/ARIA/apg/patterns/button/"
+    }
+  ]
+}

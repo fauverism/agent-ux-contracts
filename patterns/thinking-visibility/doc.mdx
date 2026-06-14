@@ -1,0 +1,48 @@
+---
+pattern: thinking-visibility
+---
+
+Reasoning models broke the latency contract of the web: thirty seconds of
+silence before an answer reads as an outage. Showing the model's working notes
+fixes the wait — the user watches progress instead of a spinner — but creates a
+new failure: intermediate reasoning quoted as if it were the conclusion.
+
+The pattern threads that needle with three moves. Reasoning lives in its own
+labeled region, typographically subordinate to the answer (`reasoning-distinct`).
+The region auto-expands while the model works and auto-collapses once the
+answer lands, unless the user explicitly pinned it open (`collapse-after-answer`).
+And the label says what it is — "Working notes" — not "Analysis," which would
+claim more authority than abandoned hypotheses deserve.
+
+Phase changes are announced through a polite live region. This is the
+accessibility heart of the pattern: a sighted user watches text accumulate, but
+without `phase-announced` a screen reader user gets a half-minute of dead air.
+
+## Using the implementations
+
+```tsx
+import { ThinkingVisibility } from './react/ThinkingVisibility';
+
+<ThinkingVisibility phase={phase} thinking={reasoningText}>
+  <Answer markdown={answer} />
+</ThinkingVisibility>
+```
+
+```js
+import { ThinkingVisibility } from './vanilla/ThinkingVisibility.js';
+
+const view = new ThinkingVisibility();
+view.mount('#response');
+view.setPhase('thinking');
+view.appendThinking(chunk);          // stream as it arrives
+view.setPhase('completed');
+renderAnswer(view.getAnswerContainer());
+```
+
+## Agent notes
+
+Stream reasoning as it arrives — replaying it later with a typewriter effect is
+theater, and the contract's guidance forbids it. Never block the page while
+thinking (`non-blocking` is MUST NOT); the user may want to abandon, scroll, or
+start something else. If the host offers a "hide reasoning" preference, persist
+it — re-collapsing every response trains users to ignore the affordance.

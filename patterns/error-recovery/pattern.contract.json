@@ -1,0 +1,215 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "error-recovery",
+  "version": "0.1.1",
+  "name": "Error Recovery",
+  "summary": "Turn generation failures — timeouts, refusals, tool errors — into recoverable moments by preserving the user's input and always offering a way forward.",
+  "status": "draft",
+  "category": "feedback",
+  "aliases": [
+    "failure handling",
+    "retry affordance",
+    "graceful degradation",
+    "retry failed request"
+  ],
+  "tags": [
+    "resilience",
+    "refusals",
+    "retry",
+    "trust"
+  ],
+  "problem": "AI systems fail often and opaquely: network timeouts, context overflows, safety refusals, tool errors. A bare 'Something went wrong' plus a discarded prompt converts a recoverable hiccup into abandoned work, and treating a refusal like a server error sends users down the wrong recovery path.",
+  "useWhen": [
+    "Generation can fail for reasons the user can act on: rephrasing, retrying, shortening input",
+    "The user invested effort in a prompt or draft that must survive the failure",
+    "Failures have distinguishable causes that warrant different recovery paths"
+  ],
+  "dontUseWhen": [
+    "Failures are programmatic and retried silently with no user decision required",
+    "The surrounding platform already owns failure UI and duplicating it would conflict",
+    "There is genuinely no user-side recovery action, where a status surface is more honest than fake options"
+  ],
+  "anatomy": [
+    {
+      "id": "error-summary",
+      "description": "Plain-language statement of what happened and what the user can do about it.",
+      "required": true
+    },
+    {
+      "id": "recovery-actions",
+      "description": "One or more concrete next steps: retry, edit and resend, switch approach.",
+      "required": true
+    },
+    {
+      "id": "preserved-input",
+      "description": "The user's prompt or draft, retained and editable after the failure.",
+      "required": true
+    },
+    {
+      "id": "error-detail",
+      "description": "Expandable technical detail — error codes, raw messages — for users who want it.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "description": "No failure present.",
+      "initial": true,
+      "transitionsTo": [
+        "errored"
+      ]
+    },
+    {
+      "id": "errored",
+      "description": "A failure occurred; summary, preserved input, and recovery actions are shown.",
+      "transitionsTo": [
+        "retrying"
+      ]
+    },
+    {
+      "id": "retrying",
+      "description": "A recovery action is in flight; controls reflect the busy state.",
+      "transitionsTo": [
+        "recovered",
+        "errored"
+      ]
+    },
+    {
+      "id": "recovered",
+      "description": "The retry succeeded; normal output flow resumes."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "input-preserved",
+      "level": "MUST",
+      "category": "resilience",
+      "statement": "The user's input MUST be preserved and remain editable after any failure.",
+      "rationale": "Retyping a lost prompt is the most expensive possible outcome of a transient failure; preserved input makes every other recovery path cheap.",
+      "verification": "E2E test: force a failure mid-request and assert the prompt text is intact and editable."
+    },
+    {
+      "id": "actionable-error",
+      "level": "MUST",
+      "category": "content",
+      "statement": "Every error state MUST present at least one recovery action.",
+      "rationale": "A terminal message with no action strands the user; even 'try again later' with a retry control beats a dead end.",
+      "verification": "Unit test: every entry in the error taxonomy maps to one or more rendered recovery actions."
+    },
+    {
+      "id": "plain-language-summary",
+      "level": "MUST",
+      "category": "content",
+      "statement": "The error summary MUST describe what happened in plain language, with raw codes and technical detail relegated to the detail region.",
+      "rationale": "Users cannot act on 'Error 529'; they can act on 'The service is overloaded — try again in a minute'.",
+      "verification": "Manual review of summary copy for each error kind; codes appear only inside the detail disclosure."
+    },
+    {
+      "id": "error-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Failures MUST be announced to assistive technology through an assertive live region or alert role.",
+      "rationale": "A visual-only error leaves screen reader users waiting on a response that will never arrive.",
+      "verification": "Unit test: the error summary container has role=alert (or aria-live assertive) and its content updates on failure."
+    },
+    {
+      "id": "retry-single-flight",
+      "level": "MUST",
+      "category": "resilience",
+      "statement": "While a retry is in flight, the component MUST prevent duplicate submissions and expose the busy state accessibly.",
+      "rationale": "Anxious double-clicks on retry produce duplicate side effects and duplicate charges.",
+      "verification": "Unit test: activating retry twice while in flight invokes the retry callback once; the control exposes aria-disabled or aria-busy."
+    },
+    {
+      "id": "refusal-distinguished",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Safety refusals SHOULD be distinguished from technical failures, with recovery paths that fit the cause: rephrase for refusals, retry for transient errors.",
+      "rationale": "Retrying a refusal verbatim cannot succeed and teaches users the system is arbitrary; rephrasing a timeout wastes effort.",
+      "verification": "Unit test: refusal-kind errors render rephrase-oriented actions, transient-kind errors render retry."
+    },
+    {
+      "id": "auto-retry-transient",
+      "level": "MAY",
+      "category": "resilience",
+      "statement": "Implementations MAY automatically retry transient failures once with backoff, with visible indication, before surfacing the error.",
+      "rationale": "Many infrastructure blips resolve in seconds; one silent-but-indicated retry saves an interruption without hiding persistent failure.",
+      "verification": "Code review: auto-retry is bounded, indicated in the UI, and falls through to the error state."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "3.3.1",
+        "name": "Error Identification",
+        "level": "A",
+        "relevance": "The failure must be identified and described to the user in text."
+      },
+      {
+        "criterion": "3.3.3",
+        "name": "Error Suggestion",
+        "level": "AA",
+        "relevance": "Recovery actions are the suggestion mechanism: known fixes must be offered to the user."
+      },
+      {
+        "criterion": "4.1.3",
+        "name": "Status Messages",
+        "level": "AA",
+        "relevance": "Retry progress and recovery results are status changes that must reach assistive technology."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches each recovery action and the preserved input in document order."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Activates the focused recovery action."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Failure occurs",
+        "behavior": "Assertive announcement of the plain-language summary."
+      },
+      {
+        "when": "Retry starts and resolves",
+        "behavior": "Polite announcement of retry progress and its outcome."
+      }
+    ],
+    "focusManagement": "Focus is not stolen on failure; the alert announcement carries the information and the user navigates to recovery actions on their own terms.",
+    "reducedMotion": "No shake or flash effects on error under prefers-reduced-motion; static styling communicates the failure."
+  },
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
+  "guidance": {
+    "do": [
+      "Write summaries as 'what happened + what to do': 'The request timed out. Your prompt is saved — try again.'",
+      "Keep the failed request's partial output visible if any arrived before the failure.",
+      "Offer 'edit and resend' as a first-class action, not just bare retry."
+    ],
+    "dont": [
+      "Do not clear or disable the user's input while showing an error.",
+      "Do not present a refusal with a retry button as the primary action.",
+      "Do not stack multiple error banners for one failure; replace, don't append."
+    ]
+  },
+  "relatedPatterns": [
+    "streaming-response",
+    "generation-control"
+  ],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 3.3.3: Error Suggestion",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/error-suggestion.html"
+    },
+    {
+      "title": "Error-Message Guidelines — Nielsen Norman Group",
+      "url": "https://www.nngroup.com/articles/error-message-guidelines/"
+    }
+  ]
+}

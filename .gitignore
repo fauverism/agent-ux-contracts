@@ -141,3 +141,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Exclude parent directory contents
+../.DS_Store
+../../.DS_Store
+../../.localized
+../CLAUDE.local.md
+../CLAUDE.md
+../Icon*
+../.*
+
+# mcp-server test scratch
+mcp-server/.scaffold-tmp/

@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-ux-patterns:pattern-contract:v1",
+  "title": "AI UX Pattern Contract",
+  "description": "Machine-readable contract for an AI interface UX pattern. Three consumers: (1) the docs generator, which renders human documentation from this contract plus doc.mdx prose; (2) the MCP server, whose search_patterns and scaffold_pattern tools serve this content to agents at generation time; (3) CI, which validates every /patterns/<id>/pattern.contract.json against this schema. Normative behavior lives in `constraints` as atomic RFC-2119 rules with stable ids; long-form prose lives in doc.mdx, not here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "name",
+    "summary",
+    "status",
+    "category",
+    "problem",
+    "useWhen",
+    "dontUseWhen",
+    "anatomy",
+    "states",
+    "constraints",
+    "accessibility",
+    "implementations"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional relative path or URI of this schema, for editor IntelliSense."
+    },
+    "id": {
+      "$ref": "#/$defs/slug",
+      "description": "Kebab-case pattern identifier. MUST equal the pattern's directory name under /patterns/ (cross-file check enforced in CI, not here)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "description": "Semver of this contract. Major bumps when a MUST-level constraint is added, removed, or changes meaning."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 60,
+      "description": "Human-readable pattern name, title case."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 200,
+      "description": "One or two sentences. This is the search card: search_patterns returns it verbatim, so it must stand alone."
+    },
+    "status": {
+      "enum": ["draft", "stable", "deprecated"],
+      "description": "Lifecycle status. `stable` contracts must ship both react and vanilla implementations (enforced below)."
+    },
+    "supersededBy": {
+      "$ref": "#/$defs/slug",
+      "description": "Id of the pattern that replaces this one. Only valid when status is `deprecated`. Referential existence is checked in CI."
+    },
+    "category": {
+      "enum": ["input", "output", "control", "transparency", "feedback", "context"],
+      "description": "Primary interaction axis: input (intent capture, prompting), output (rendering generated content), control (interrupt, undo, approval), transparency (reasoning, tool use, provenance), feedback (correction, rating, refinement), context (memory, history, state awareness). Use `tags` for secondary facets."
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2 },
+      "uniqueItems": true,
+      "description": "Alternative names practitioners use for this pattern. Searched by search_patterns."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2 },
+      "uniqueItems": true,
+      "description": "Free-form secondary facets for search."
+    },
+    "problem": {
+      "type": "string",
+      "minLength": 40,
+      "description": "The UX problem this pattern solves, stated as a problem — not a description of the solution."
+    },
+    "useWhen": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 10 },
+      "description": "Concrete conditions under which an agent or developer should reach for this pattern."
+    },
+    "dontUseWhen": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 10 },
+      "description": "Conditions under which this pattern is the wrong choice. Required: knowing when not to use a pattern is half its value."
+    },
+    "anatomy": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/anatomyPart" },
+      "description": "The named parts of the pattern. scaffold_pattern uses these ids; constraints reference them informally."
+    },
+    "states": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/state" },
+      "contains": {
+        "type": "object",
+        "properties": { "initial": { "const": true } },
+        "required": ["initial"]
+      },
+      "minContains": 1,
+      "maxContains": 1,
+      "description": "The pattern's state machine. Exactly one state must declare `initial: true`. Transition targets are referentially checked in CI."
+    },
+    "constraints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/constraint" },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "category": { "const": "accessibility" } },
+            "required": ["category"]
+          },
+          "description": "Every contract must carry at least one accessibility constraint. Accessibility is a contract field, not an afterthought."
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "level": { "enum": ["MUST", "MUST_NOT"] } },
+            "required": ["level"]
+          },
+          "description": "A contract with no MUST-level rule is documentation, not a contract."
+        }
+      ],
+      "description": "Atomic normative rules. Constraint ids are stable within the pattern and are the targets COMPLIANCE.md files trace to; never reuse an id after removing it. Uniqueness of ids is checked in CI."
+    },
+    "accessibility": {
+      "$ref": "#/$defs/accessibility",
+      "description": "Structured accessibility metadata: which WCAG criteria apply and how the pattern behaves for keyboard and screen reader users. Normative a11y rules live in `constraints` with category `accessibility`; this object holds the supporting structure docs and agents consume."
+    },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["react", "vanilla", "angular"] },
+      "description": "Reference implementations that exist under /patterns/<id>/. CI verifies each listed implementation directory exists and contains a COMPLIANCE.md."
+    },
+    "guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "do": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 10 }
+        },
+        "dont": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 10 }
+        }
+      },
+      "description": "Short do/don't items for generation-time guidance. Sub-normative: anything that belongs in CI or COMPLIANCE.md goes in `constraints` instead."
+    },
+    "relatedPatterns": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/slug" },
+      "description": "Ids of related patterns in this catalog. Referential existence is checked in CI."
+    },
+    "references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reference" },
+      "description": "External sources: ARIA APG, WCAG techniques, vendor guidelines, research."
+    }
+  },
+  "dependentSchemas": {
+    "supersededBy": {
+      "properties": { "status": { "const": "deprecated" } }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "stable" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "implementations": {
+            "type": "array",
+            "allOf": [
+              { "contains": { "const": "react" } },
+              { "contains": { "const": "vanilla" } }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "anatomyPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "required"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "description": "What this part is and what it is responsible for."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether an implementation must render this part to claim compliance."
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "description": { "type": "string", "minLength": 10 },
+        "initial": {
+          "type": "boolean",
+          "description": "Exactly one state per contract sets this to true."
+        },
+        "transitionsTo": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/slug" },
+          "description": "Ids of states reachable from this one. Omit for terminal states. Targets must exist in `states` (checked in CI)."
+        }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "statement", "rationale", "category", "verification"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/slug",
+          "description": "Stable within the pattern. COMPLIANCE.md files reference this id; never reuse after removal."
+        },
+        "level": {
+          "enum": ["MUST", "MUST_NOT", "SHOULD", "SHOULD_NOT", "MAY"],
+          "description": "RFC-2119 requirement level, normalized to five values."
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 20,
+          "description": "One atomic normative sentence containing the RFC-2119 keyword matching `level`. One rule per constraint — compound statements break compliance traceability."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Why this rule exists. Agents weigh constraints better when the reason ships with the rule."
+        },
+        "category": {
+          "enum": [
+            "accessibility",
+            "interaction",
+            "state",
+            "content",
+            "performance",
+            "privacy",
+            "resilience"
+          ],
+          "description": "The aspect of the implementation this rule governs."
+        },
+        "verification": {
+          "type": "string",
+          "minLength": 10,
+          "description": "How an implementation proves compliance — the test, audit, or review step a COMPLIANCE.md should point at."
+        },
+        "appliesTo": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["react", "vanilla", "angular"] },
+          "description": "Restricts the rule to specific implementations. Omit when the rule applies to all."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": { "level": { "const": "MUST" } },
+            "required": ["level"]
+          },
+          "then": {
+            "properties": {
+              "statement": {
+                "type": "string",
+                "pattern": "\\bMUST\\b",
+                "not": { "pattern": "\\bMUST NOT\\b" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "level": { "const": "MUST_NOT" } },
+            "required": ["level"]
+          },
+          "then": {
+            "properties": {
+              "statement": { "type": "string", "pattern": "\\bMUST NOT\\b" }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "level": { "const": "SHOULD" } },
+            "required": ["level"]
+          },
+          "then": {
+            "properties": {
+              "statement": {
+                "type": "string",
+                "pattern": "\\bSHOULD\\b",
+                "not": { "pattern": "\\bSHOULD NOT\\b" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "level": { "const": "SHOULD_NOT" } },
+            "required": ["level"]
+          },
+          "then": {
+            "properties": {
+              "statement": { "type": "string", "pattern": "\\bSHOULD NOT\\b" }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "level": { "const": "MAY" } },
+            "required": ["level"]
+          },
+          "then": {
+            "properties": {
+              "statement": { "type": "string", "pattern": "\\bMAY\\b" }
+            }
+          }
+        }
+      ]
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wcagCriteria"],
+      "properties": {
+        "wcagCriteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/wcagCriterion" },
+          "description": "WCAG success criteria this pattern implicates, each with why it applies here."
+        },
+        "keyboard": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/keyboardInteraction" },
+          "description": "Keyboard interaction table."
+        },
+        "screenReader": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/screenReaderBehavior" },
+          "description": "What assistive technology users experience at each notable moment."
+        },
+        "focusManagement": {
+          "type": "string",
+          "minLength": 10,
+          "description": "The pattern's focus strategy: where focus goes, and crucially where it must never go on its own."
+        },
+        "reducedMotion": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Behavior under prefers-reduced-motion."
+        }
+      }
+    },
+    "wcagCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion", "name", "level", "relevance"],
+      "properties": {
+        "criterion": {
+          "type": "string",
+          "pattern": "^[1-4]\\.[1-9]\\d*\\.[1-9]\\d*$",
+          "description": "Success criterion number, e.g. 4.1.3."
+        },
+        "name": { "type": "string", "minLength": 3 },
+        "level": { "enum": ["A", "AA", "AAA"] },
+        "relevance": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Why this criterion applies to this pattern specifically."
+        }
+      }
+    },
+    "keyboardInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "action"],
+      "properties": {
+        "keys": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Key or combination, e.g. \"Escape\", \"Shift+Enter\"."
+        },
+        "action": { "type": "string", "minLength": 10 }
+      }
+    },
+    "screenReaderBehavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when", "behavior"],
+      "properties": {
+        "when": {
+          "type": "string",
+          "minLength": 5,
+          "description": "The moment or event, e.g. \"Stream completes\"."
+        },
+        "behavior": {
+          "type": "string",
+          "minLength": 10,
+          "description": "What is announced or how the experience changes."
+        }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "url"],
+      "properties": {
+        "title": { "type": "string", "minLength": 3 },
+        "url": { "type": "string", "format": "uri" },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

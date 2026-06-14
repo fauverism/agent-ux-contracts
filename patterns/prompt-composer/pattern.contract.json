@@ -1,0 +1,226 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "prompt-composer",
+  "version": "0.1.0",
+  "name": "Prompt Composer",
+  "summary": "A chat-style input where Enter sends, Shift+Enter newlines, drafts survive failure, and submission gating never locks the user out of typing.",
+  "status": "draft",
+  "category": "input",
+  "aliases": ["chat input", "message composer", "prompt box"],
+  "tags": ["chat", "keyboard", "drafts", "ime", "length-budget"],
+  "problem": "A chat composer looks like a text field but carries app-level semantics: Enter submits, overturning a decades-old newline convention that must then be re-taught; drafts hold real work that naive implementations destroy on failure; token budgets impose limits that native maxLength enforces by silently eating keystrokes; and IME users get messages fired mid-composition because Enter confirms a character, not a message.",
+  "useWhen": [
+    "Users compose conversational or prompt input submitted to a model",
+    "Multi-line input is meaningful and Enter-to-send is the expected convention",
+    "Input length is budgeted and users need to see and fix overage themselves"
+  ],
+  "dontUseWhen": [
+    "The input is a conventional form field where Enter-to-submit would break form semantics",
+    "Input is single-line and short, where a standard search-style field is honest",
+    "Submission is gated on complex validation better served by an explicit form with inline errors"
+  ],
+  "anatomy": [
+    {
+      "id": "composer-input",
+      "description": "The multiline text area where the user composes; grows with content.",
+      "required": true
+    },
+    {
+      "id": "submit-control",
+      "description": "Visible button that submits; never the only path (Enter also submits) and never removed when unavailable.",
+      "required": true
+    },
+    {
+      "id": "keyboard-hint",
+      "description": "Visible hint teaching the Enter / Shift+Enter mapping.",
+      "required": false
+    },
+    {
+      "id": "length-status",
+      "description": "Remaining-budget display shown when a length limit exists; announces the over-limit transition.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "empty",
+      "description": "Nothing to submit; the submit control is present but unavailable.",
+      "initial": true,
+      "transitionsTo": ["composing"]
+    },
+    {
+      "id": "composing",
+      "description": "A draft exists and is within budget; submission is available.",
+      "transitionsTo": ["empty", "over-limit", "busy"]
+    },
+    {
+      "id": "over-limit",
+      "description": "The draft exceeds the length budget; typing continues, submission is gated.",
+      "transitionsTo": ["composing", "empty"]
+    },
+    {
+      "id": "busy",
+      "description": "A submission is in flight; typing continues, a second submission is gated.",
+      "transitionsTo": ["empty", "composing"]
+    }
+  ],
+  "constraints": [
+    {
+      "id": "composer-labeled",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "The composer input MUST have an accessible name from a visible label or equivalent; placeholder text alone is not an accessible name.",
+      "rationale": "Placeholders vanish on input and are inconsistently exposed by assistive technology, leaving the primary control of the product unnamed.",
+      "verification": "Unit test: the textarea is reachable by role with its accessible name; axe reports no label violations."
+    },
+    {
+      "id": "enter-submits",
+      "level": "MUST",
+      "category": "interaction",
+      "statement": "The composer MUST map Enter to submit and Shift+Enter to inserting a newline.",
+      "rationale": "This is the established convention for chat-style AI input; deviating from it breaks muscle memory trained by every major chat product.",
+      "verification": "Unit test: Enter triggers the submit callback with the draft; Shift+Enter does not submit."
+    },
+    {
+      "id": "ime-safe",
+      "level": "MUST_NOT",
+      "category": "interaction",
+      "statement": "The composer MUST NOT treat Enter as submit while an input-method (IME) composition session is active.",
+      "rationale": "For CJK and other IME users, Enter confirms a character conversion; submitting mid-composition fires half-written messages and makes the product unusable in those languages.",
+      "verification": "Unit test: a keydown Enter event with isComposing true does not invoke the submit callback."
+    },
+    {
+      "id": "draft-preserved",
+      "level": "MUST_NOT",
+      "category": "resilience",
+      "statement": "The composer MUST NOT discard an unsubmitted draft except on explicit user clearing or successful submission.",
+      "rationale": "Drafts are work; losing one to a failed submission or busy-state transition converts a transient fault into retyping.",
+      "verification": "Unit test: the draft value is unchanged across busy transitions and after a rejected submission attempt."
+    },
+    {
+      "id": "no-silent-truncation",
+      "level": "MUST_NOT",
+      "category": "content",
+      "statement": "The composer MUST NOT silently truncate or block input beyond the length budget; it shows the over-limit state and lets the user edit their way back.",
+      "rationale": "Native maxLength swallows keystrokes and pasted content without telling the user what was lost; an explicit over-limit state preserves their text and their agency.",
+      "verification": "Unit test: input beyond the budget is fully retained, the over-limit state is exposed, and submission is gated."
+    },
+    {
+      "id": "typing-never-locked",
+      "level": "MUST",
+      "category": "interaction",
+      "statement": "Typing MUST remain possible while submission is unavailable — empty, over limit, or in flight; only submission itself is gated.",
+      "rationale": "Users fix overage by editing and compose their next message while the previous one sends; a disabled textarea blocks both for no safety gain.",
+      "verification": "Unit test: the textarea is never disabled or readonly in any state."
+    },
+    {
+      "id": "submit-state-accessible",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "When submission is unavailable the submit control MUST remain visible and focusable, exposing the unavailable state and its reason accessibly.",
+      "rationale": "A vanished or natively-disabled button is undiscoverable to screen reader users, who are left wondering whether the product can send at all and why it currently will not.",
+      "verification": "Unit test: in empty, over-limit, and busy states the button is in the document with aria-disabled true and an accessible description naming the reason."
+    },
+    {
+      "id": "shortcut-discoverable",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "The Enter and Shift+Enter mapping SHOULD be visibly hinted near the composer.",
+      "rationale": "The mapping contradicts the textarea's native behavior; an invisible convention punishes exactly the users who haven't learned it yet.",
+      "verification": "Manual review: a visible hint near the composer states the mapping."
+    },
+    {
+      "id": "grow-with-content",
+      "level": "SHOULD",
+      "category": "interaction",
+      "statement": "The composer SHOULD grow vertically with content up to a bounded height rather than confining input to a single scrolling line.",
+      "rationale": "Prompts are routinely multi-paragraph; editing inside a one-line slit hides context and produces errors users cannot see.",
+      "verification": "Manual review: the input's height tracks content up to a maximum, then scrolls."
+    },
+    {
+      "id": "enter-preference",
+      "level": "MAY",
+      "category": "interaction",
+      "statement": "Implementations MAY offer a preference to swap the Enter mapping (for example Ctrl+Enter to send) for accessibility or international input needs.",
+      "rationale": "Some users — switch-device users, heavy IME users — are better served by an explicit-modifier send; a preference respects that without changing the default.",
+      "verification": "Code review: the preference, if present, persists and is honored by the keydown handling."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "3.3.2",
+        "name": "Labels or Instructions",
+        "level": "A",
+        "relevance": "The composer needs a real label, and the non-native Enter mapping is an instruction that must be provided."
+      },
+      {
+        "criterion": "2.1.1",
+        "name": "Keyboard",
+        "level": "A",
+        "relevance": "Composing, submitting, and reaching the submit control must all work without a pointer."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "The submit control's unavailable state must be programmatically determinable, not just visually grayed."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Enter",
+        "action": "Submits the draft when submission is available; ignored during IME composition."
+      },
+      {
+        "keys": "Shift+Enter",
+        "action": "Inserts a newline."
+      },
+      {
+        "keys": "Tab",
+        "action": "Moves from the composer to the submit control in document order."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Composer receives focus",
+        "behavior": "Announces the accessible name and the Enter mapping instructions via the described-by hint."
+      },
+      {
+        "when": "Draft crosses the length budget",
+        "behavior": "Polite announcement of the over-limit status from the length-status region."
+      },
+      {
+        "when": "Submit control receives focus while unavailable",
+        "behavior": "Announces the control's name, its unavailable state, and the reason (empty, over limit, or sending)."
+      }
+    ],
+    "focusManagement": "Focus stays in the composer after submission so the next message can be typed immediately; the component never moves focus itself.",
+    "reducedMotion": "Height growth is not animated under prefers-reduced-motion; the composer resizes instantly."
+  },
+  "implementations": ["react", "vanilla"],
+  "guidance": {
+    "do": [
+      "Keep the submit button visible in every state; communicate unavailability through state, not absence.",
+      "Show the length budget only when one exists, and count down visibly as the user approaches it.",
+      "Clear the draft only after the host confirms the submission was accepted."
+    ],
+    "dont": [
+      "Do not set the native maxLength attribute; it silently eats keystrokes and pasted text.",
+      "Do not disable the textarea while a message sends.",
+      "Do not rely on placeholder text as the label or as the keyboard hint."
+    ]
+  },
+  "relatedPatterns": ["streaming-response", "error-recovery"],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 3.3.2: Labels or Instructions",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions.html"
+    },
+    {
+      "title": "MDN: KeyboardEvent.isComposing",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing",
+      "note": "The check that keeps Enter-to-send from firing during IME composition."
+    }
+  ]
+}

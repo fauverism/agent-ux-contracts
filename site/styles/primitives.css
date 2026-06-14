@@ -1,0 +1,896 @@
+/*
+ * Core primitives. Semantic classes, thin TSX wrappers in /components.
+ * Separation is rules and borders throughout — no shadows, no card chrome.
+ */
+
+/* ---- base ---------------------------------------------------------------- */
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-optical-sizing: auto;
+  font-size: var(--step-0);
+  line-height: var(--leading-0);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 24%, var(--paper));
+}
+
+/* Focus stays ink — accent is reserved (see tokens.css usage contract). */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---- PageShell ------------------------------------------------------------ */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.shell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1.5rem;
+  padding-block: 1.5rem 0.75rem;
+  border-bottom: 2px solid var(--line-strong); /* masthead rule */
+}
+
+.shell-mark {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.shell-nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.shell-nav a {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  letter-spacing: 0.04em;
+  color: var(--ink-70);
+  text-decoration: none;
+}
+
+.shell-nav a:hover {
+  color: var(--accent);
+}
+
+.shell-nav a[aria-current='page'] {
+  color: var(--accent); /* active nav — sanctioned accent use */
+}
+
+.shell-main {
+  flex: 1;
+  padding-block: 3rem 4rem;
+}
+
+/* Footer is a full ruled section, not an afterthought. */
+.shell-footer {
+  border-top: 2px solid var(--line-strong);
+  padding-block: 1.5rem 2rem;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  color: var(--ink-70);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1.5rem;
+  max-width: 40rem;
+}
+
+.footer-grid p {
+  margin: 0;
+}
+
+.footer-head {
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  margin-bottom: 0.25rem;
+}
+
+.footer-grid a {
+  color: var(--ink-70);
+  text-decoration: none;
+}
+
+.footer-grid a:hover {
+  color: var(--accent);
+}
+
+.footer-colophon {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-45);
+  max-width: var(--measure);
+}
+
+/* ---- ConstraintBadge ------------------------------------------------------ */
+/* A printed stamp: square corners, hairline frame, letterpress inset. */
+
+.constraint-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  padding: 0.0625rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  background: color-mix(in oklab, currentColor 7%, transparent);
+  /* letterpress: a faint top deboss inside the frame */
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--ink) 14%, transparent);
+  white-space: nowrap;
+}
+
+.constraint-badge[data-level='MUST'] {
+  color: var(--level-must);
+}
+
+/* Prohibition reads stronger: the stamp is filled. */
+.constraint-badge[data-level='MUST_NOT'] {
+  color: var(--paper);
+  background: var(--level-must);
+  border-color: var(--level-must);
+  box-shadow: none;
+}
+
+.constraint-badge[data-level='SHOULD'],
+.constraint-badge[data-level='SHOULD_NOT'] {
+  color: var(--level-should);
+}
+
+.constraint-badge[data-level='MAY'] {
+  color: var(--level-may);
+}
+
+/* ---- PatternID ------------------------------------------------------------ */
+/* Mono, small-caps feel. The DOM text stays the literal contract id
+   (lowercase kebab) so copy/paste is exact; uppercase is purely visual. */
+
+.pattern-id,
+.prose code.pattern-id {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+/* ---- RuleDivider ----------------------------------------------------------- */
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin-block: 2rem;
+}
+
+.rule[data-variant='strong'] {
+  border-top: 2px solid var(--line-strong);
+}
+
+/* Editorial thick-and-thin pair. */
+.rule[data-variant='double'] {
+  height: 0.25rem;
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.rule-labeled {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 2rem;
+}
+
+.rule-labeled::before,
+.rule-labeled::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.rule-labeled > span {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+
+/* ---- Prose ------------------------------------------------------------------ */
+
+.prose {
+  max-width: var(--measure);
+}
+
+.prose p {
+  margin-block: 0 1.75rem;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.prose h1 {
+  font-size: var(--step-4);
+  font-weight: 900;
+  line-height: var(--leading-4);
+  margin-block: 0 1rem;
+}
+
+.prose h2 {
+  font-size: var(--step-2);
+  line-height: var(--leading-2);
+  margin-block: 3rem 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.prose h3 {
+  font-size: var(--step-1);
+  line-height: var(--leading-1);
+  font-weight: 600;
+  margin-block: 2rem 0.5rem;
+}
+
+.prose h4 {
+  font-size: var(--step-0);
+  line-height: var(--leading-0);
+  font-weight: 600;
+  margin-block: 1.75rem 0.25rem;
+}
+
+.prose a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--ink-45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.prose a:hover {
+  color: var(--accent); /* link hover — sanctioned accent use */
+  text-decoration-color: currentColor;
+}
+
+.prose ul {
+  list-style: square;
+  padding-inline-start: 1.25rem;
+  margin-block: 0 1.75rem;
+}
+
+.prose ol {
+  padding-inline-start: 1.5rem;
+  margin-block: 0 1.75rem;
+}
+
+.prose li {
+  margin-block: 0.25rem;
+}
+
+.prose li::marker {
+  color: var(--ink-45);
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  padding: 0.0625rem 0.25rem;
+}
+
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin-block: 0 1.75rem;
+}
+
+.prose pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+}
+
+.prose blockquote {
+  border-inline-start: 2px solid var(--line-strong);
+  margin: 0 0 1.75rem;
+  padding-inline-start: 1.25rem;
+  font-style: italic;
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  margin-block: 0 1.75rem;
+}
+
+.prose th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+  border-bottom: 2px solid var(--line-strong);
+  padding: 0.5rem 1rem 0.5rem 0;
+}
+
+.prose td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 1rem 0.5rem 0;
+  vertical-align: top;
+}
+
+/* ---- Home: thesis + index ---------------------------------------------------- */
+/* The title page of the manual: thesis set large in the text face. */
+
+.thesis {
+  font-family: var(--font-text);
+  font-size: var(--step-4);
+  line-height: var(--leading-1);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  max-width: 24ch;
+  margin: 0;
+}
+
+@media (min-width: 48rem) {
+  .thesis {
+    font-size: var(--step-5);
+    line-height: var(--leading-5);
+  }
+}
+
+.thesis em {
+  font-style: normal;
+  color: var(--ink-70);
+}
+
+/* The pattern index IS the homepage: a typographic table, ruled rows. */
+.index-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.index-table th {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-70);
+  text-align: left;
+  border-bottom: 2px solid var(--line-strong);
+  padding: 0.5rem 1rem 0.5rem 0;
+}
+
+.index-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.75rem 1rem 0.75rem 0;
+  vertical-align: baseline;
+}
+
+.index-table .col-id a {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.index-table .col-id a:hover {
+  color: var(--accent);
+}
+
+.index-table .col-name {
+  font-family: var(--font-text);
+}
+
+.index-table .col-cat,
+.index-table .col-count,
+.index-table .col-fw {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  color: var(--ink-70);
+  white-space: nowrap;
+}
+
+/* Category mark: a small square in the extended palette. Not a pill. */
+.cat-mark {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.5rem;
+  vertical-align: baseline;
+  background: var(--cat-color, var(--c-grey));
+}
+
+/* ---- Subscribe ----------------------------------------------------------------- */
+/* Quiet and well-set: a ruled block, mono label, one sanctioned accent use. */
+
+.subscribe {
+  margin-top: 4rem;
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
+  padding-block: 1.5rem;
+  max-width: var(--measure);
+}
+
+.subscribe-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  margin: 0 0 0.5rem;
+}
+
+.subscribe p {
+  margin: 0;
+}
+
+.subscribe a {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--accent); /* the subscribe affordance — sanctioned accent use */
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+/* ---- Pattern page: clauses + rail + toggle -------------------------------------- */
+
+.pattern-layout {
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 56rem) {
+  .pattern-layout {
+    grid-template-columns: minmax(0, 1fr) 15rem;
+  }
+}
+
+.pattern-rail {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  border-top: 2px solid var(--line-strong);
+  align-self: start;
+}
+
+@media (min-width: 56rem) {
+  .pattern-rail {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+.pattern-rail dl {
+  margin: 0;
+}
+
+.pattern-rail dt {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  padding-top: 0.75rem;
+}
+
+.pattern-rail dd {
+  margin: 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+/* Constraints set like clauses in a standard. */
+.clause-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: clause;
+}
+
+.clause {
+  counter-increment: clause;
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0 0.75rem;
+  border-top: 1px solid var(--line);
+  padding-block: 1rem;
+}
+
+.clause::before {
+  content: counter(clause, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading-0);
+  color: var(--ink-45);
+}
+
+.clause-body {
+  max-width: var(--measure);
+}
+
+.clause-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.clause-id {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.clause-statement {
+  margin: 0.25rem 0 0;
+}
+
+.clause-rationale {
+  margin: 0.5rem 0 0;
+  color: var(--ink-70);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+}
+
+.clause-verification {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  color: var(--ink-45);
+}
+
+/* Human/Agent toggle: flipping to the machine-readable overlay of the same page. */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 1px;
+}
+
+.view-toggle button {
+  appearance: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+  padding: 0.25rem 0.75rem;
+}
+
+.view-toggle button + button {
+  border-left: 1px solid var(--line-strong);
+}
+
+.view-toggle button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.view-pane[hidden] {
+  display: none;
+}
+
+.view-pane {
+  animation: pane-in 160ms ease-out;
+}
+
+@keyframes pane-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-pane {
+    animation: none;
+  }
+}
+
+/* Agent view: the raw contract in mono. Ink steps carry the structure;
+   accent marks only the RFC-2119 level keywords. */
+.agent-json {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.agent-json .j-key {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.agent-json .j-str {
+  color: var(--ink-70);
+}
+
+.agent-json .j-lit {
+  color: var(--ink);
+}
+
+.agent-json .j-punct {
+  color: var(--ink-45);
+}
+
+.agent-json .j-level {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- Getting started: command blocks + demo timeline ----------------------------- */
+
+.cmd-block {
+  position: relative;
+  max-width: var(--measure);
+}
+
+.cmd-block pre {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  padding: 1rem 1.25rem;
+  padding-right: 5rem;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  appearance: none;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 1px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+  padding: 0.125rem 0.5rem;
+}
+
+.copy-btn:hover {
+  color: var(--ink);
+}
+
+.demo-step {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0 1rem;
+  border-top: 1px solid var(--line);
+  padding-block: 1rem;
+  max-width: var(--measure);
+}
+
+.demo-step-time {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading-0);
+  color: var(--ink-45);
+  white-space: nowrap;
+}
+
+/* ---- Subscribe form -------------------------------------------------------- */
+/* One field, one button. The filled button is the subscribe affordance —
+   a sanctioned accent placement (tokens.css). */
+
+.subscribe-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.subscribe-form label {
+  display: block;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+}
+
+.subscribe-form input[type='email'] {
+  appearance: none;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 1px;
+  padding: 0.375rem 0.625rem;
+  min-width: 16rem;
+  flex: 1 1 16rem;
+  max-width: 24rem;
+}
+
+.subscribe-form input[type='email']::placeholder {
+  color: var(--ink-45);
+}
+
+.subscribe-form button {
+  appearance: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--accent); /* subscribe affordance — sanctioned accent use */
+  border: 1px solid var(--accent);
+  border-radius: 1px;
+  padding: 0.4375rem 1rem;
+}
+
+.subscribe-form button:hover {
+  background: color-mix(in oklab, var(--accent) 88%, var(--ink));
+  border-color: color-mix(in oklab, var(--accent) 88%, var(--ink));
+}
+
+.subscribe-micro {
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  color: var(--ink-45);
+}
+
+/* ---- Contact table ---------------------------------------------------------- */
+/* Three honest channels, set as ruled rows. */
+
+.contact-table {
+  width: 100%;
+  max-width: var(--measure);
+  border-collapse: collapse;
+  border-top: 2px solid var(--line-strong);
+}
+
+.contact-table th {
+  font-family: var(--font-text);
+  font-weight: 500;
+  font-size: var(--step-0);
+  line-height: var(--leading-0);
+  text-align: left;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--line);
+  padding: 0.75rem 1.5rem 0.75rem 0;
+  width: 45%;
+}
+
+.contact-table td {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: var(--leading--1);
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--line);
+  padding: 0.75rem 0;
+}
+
+.contact-table a {
+  color: var(--ink-70);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.contact-table a:hover {
+  color: var(--accent);
+}
+
+/* ---- RevStamp ---------------------------------------------------------------- */
+/* A rubber stamp that landed slightly off-square. The angle is set per
+   pattern (deterministic hash of the id), the way no two hand stamps land
+   alike. Static transform — nothing moves, nothing to motion-gate. */
+
+.rev-stamp {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  padding: 0 0.375rem;
+  white-space: nowrap;
+  /* transform: rotate(var(--stamp-angle, -1.5deg)); */
+  transform-origin: center;
+}
+
+.rev-stamp[data-size='lg'] {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  padding: 0.0625rem 0.5rem;
+}

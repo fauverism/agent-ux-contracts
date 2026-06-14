@@ -1,0 +1,55 @@
+---
+pattern: approval-gate
+---
+
+The moment an agent can send email, the question stops being "is the output
+good" and becomes "who authorized this." An approval gate is where that
+authorization happens — which means its failure modes are consent failures,
+not usability failures.
+
+Three rules carry the weight. `explicit-consent`: nothing executes without a
+deliberate activation of the approve control — no timeouts, no defaults, no
+"approving in 5…4…3…". `accurate-preview`: what the user sees is byte-for-byte
+what runs; a gate that summarizes one thing and executes another is theater
+with an audit log. `no-preselected-approve`: the approve button is never
+auto-focused, because muscle-memory Enter is how users authorize things they
+never read.
+
+The quieter danger is fatigue. A gate on every trivial action trains users to
+click through, and a click-through gate protects no one — that's why
+`fatigue-batching` pushes repeated low-risk proposals toward batch decisions,
+and why the contract's `dontUseWhen` explicitly excludes trivially-reversible
+actions. Gate what matters, or the gate stops mattering.
+
+## Using the implementations
+
+```tsx
+import { ApprovalGate } from './react/ApprovalGate';
+
+<ApprovalGate
+  summary="Send follow-up email to 3 customers"
+  payload={emailDraft}            // the exact content that will send
+  irreversible
+  onApprove={() => sendEmails(emailDraft)}
+  onReject={() => agent.cancel()}
+/>
+```
+
+```js
+import { ApprovalGate } from './vanilla/ApprovalGate.js';
+
+new ApprovalGate({
+  summary: 'Delete 14 archived records',
+  payload: JSON.stringify(records, null, 2),
+  irreversible: true,
+  consequence: 'Affects 14 records.',
+  onApprove: () => api.deleteRecords(ids),
+}).mount('#gate');
+```
+
+## Agent notes
+
+Pass the executed payload as the preview — not a summary of it. Name the action
+in the approve control's accessible name ("Approve: send 3 emails"). One gate
+per action: bundling unlike actions under one approval converts informed
+consent into a permission slip. Escape rejects; nothing auto-approves, ever.

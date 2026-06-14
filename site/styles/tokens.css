@@ -1,0 +1,100 @@
+/*
+ * Design tokens — agent-ux-contracts field manual.
+ *
+ * The site's own rules, stated the way the catalog states rules:
+ *
+ *   accent          MUST appear only on: MUST/MUST_NOT badges, active nav,
+ *                   links on hover, the subscribe affordance, and RFC-2119
+ *                   level keywords in agent-view contract JSON.
+ *   accent          MUST_NOT be used for decoration, large fills, or body text.
+ *   separation      MUST come from rules/borders, never drop shadows.
+ *   radii           MUST stay at 0–1px. No pills.
+ *   grays           MUST derive from ink via color-mix — no third palette.
+ *
+ * Theming uses light-dark(): every color is defined once, both modes in one
+ * place, no drift between blocks. Force a mode on any subtree with
+ * [data-theme="light" | "dark"].
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- surfaces & ink -------------------------------------------------- */
+  /* Warm paper, not white; warm near-black, not #000. Dark mode is true
+     near-black with warm off-white ink — no mid-gray soup in either mode. */
+  --paper: light-dark(#f7f2e8, #141210);
+  --paper-raised: light-dark(#efe8d9, #1d1a16); /* code blocks, inset panels */
+  --ink: light-dark(#211c15, #ece4d4);
+
+  /* Ink steps are mixes toward paper, so they stay warm in both modes.
+     The names are emphasis steps, not literal percentages: mixes are tuned
+     so even the quietest step holds WCAG AA (≥4.5:1) on both papers at the
+     11px mono sizes it sets (measured 4.59 light / 4.96 dark). */
+  --ink-70: color-mix(in oklab, var(--ink) 72%, var(--paper));
+  --ink-45: color-mix(in oklab, var(--ink) 58%, var(--paper));
+
+  /* ---- the one accent --------------------------------------------------- */
+  /* Editorial green-darkblue: a safety stamp on a spec document. See usage
+     contract above — the sanctioned placements, nowhere else. Light green
+     deepened from #0daa70 to hold AA against paper (4.95:1; the original
+     measured 2.69:1 at nav/badge text sizes). */
+  --accent: light-dark(#08784d, #008b9d);
+
+  /* ---- rules (the separators) ------------------------------------------- */
+  --line: color-mix(in oklab, var(--ink) 25%, var(--paper)); /* hairline */
+  --line-strong: var(--ink); /* masthead, section heads */
+
+  /* ---- constraint levels ------------------------------------------------ */
+  /* MUST/MUST_NOT carry the accent; SHOULD and MAY are ink, quieter. */
+  --level-must: var(--accent);
+  --level-should: var(--ink-70);
+  --level-may: var(--ink-45);
+
+  /* ---- typography -------------------------------------------------------- */
+  /* Text voice: DM Sans (business sans serif, creative, modern).
+     Content-mono voice: Google Sans Code (pattern ids, contract excerpts,
+     constraint rules). Considered IBM Plex Mono + JetBrains Mono — sturdier
+     but more anonymous; JetBrains Mono reads "IDE", Plex reads "printed spec". */
+  --font-text: 'DM Sans', 'Helvetica Neue', Helvetica, 'Arial', sans-serif;
+  --font-mono: 'Google Sans Code', ui-monospace, 'IBM Plex Mono', Menlo, monospace;
+
+  /* Type scale, ratio 1.25 from 1rem. Line heights snap to the 4px baseline
+     grid (multiples of 0.25rem). */
+  --baseline: 0.25rem;
+  --step--1: 0.8rem;     --leading--1: 1.25rem; /* 12.8 / 20 */
+  --step-0: 1rem;        --leading-0: 1.75rem;  /* 16   / 28 — body */
+  --step-1: 1.25rem;     --leading-1: 1.75rem;  /* 20   / 28 */
+  --step-2: 1.5625rem;   --leading-2: 2rem;     /* 25   / 32 */
+  --step-3: 1.9531rem;   --leading-3: 2.5rem;   /* 31.3 / 40 */
+  --step-4: 2.4414rem;   --leading-4: 3rem;     /* 39   / 48 */
+  --step-5: 3.0518rem;   --leading-5: 3.5rem;   /* 48.8 / 56 */
+
+  /* Prose measure: 65–75ch target. */
+  --measure: 68ch;
+
+  /* Shell width: wide enough for a two-column pattern page, no wider. */
+  --shell-max: 64rem;
+
+  /* ---- extended palette -------------------------------------------------- */
+  /* Hue marks for categorical content (category dots, chart keys). The deep
+     set sits on light paper; the bright set on dark. These are marks, not
+     text colors, and never compete with the accent's four placements. */
+  --c-black: light-dark(#1a1a1a, #d5d5d5);
+  --c-white: light-dark(#e1e1e1, #2a2830);
+  --c-grey: light-dark(#7e7e7e, #898989);
+  --c-purple: light-dark(#60309a, #aa72f0);
+  --c-fuschia: light-dark(#d42870, #ee5cac);
+  --c-blue: light-dark(#2288e6, #2aacee);
+  --c-green: light-dark(#1a9966, #3dd898);
+  --c-orange: light-dark(#c07020, #ee9440);
+  --c-yellow: light-dark(#868820, #c8c83a);
+}
+
+/* Forced-mode subtrees (styleguide comparisons; later, embedded examples). */
+[data-theme='light'] {
+  color-scheme: only light;
+}
+[data-theme='dark'] {
+  color-scheme: only dark;
+}
+

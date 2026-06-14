@@ -1,0 +1,223 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "streaming-response",
+  "version": "0.2.1",
+  "name": "Streaming Response",
+  "summary": "Render model output progressively as tokens arrive, keeping the page readable, interruptible, and accessible while content is in flight.",
+  "status": "draft",
+  "category": "output",
+  "aliases": [
+    "progressive response",
+    "token streaming",
+    "typewriter output",
+    "AI loading state"
+  ],
+  "tags": [
+    "latency",
+    "aria-live",
+    "generation",
+    "loading"
+  ],
+  "problem": "Model responses arrive over seconds, not milliseconds. Showing nothing until completion makes the product feel broken; naive progressive rendering causes layout shift, unreadable mid-word reflow, silent experiences for screen reader users, and no way to stop a generation that is going wrong.",
+  "useWhen": [
+    "Response latency is long enough that a blank wait harms perceived performance",
+    "Users can read or act on partial output before the response completes",
+    "Generation can be stopped midway and the partial result still has value"
+  ],
+  "dontUseWhen": [
+    "Output must be validated, moderated, or post-processed in full before any of it is shown",
+    "Responses are short and fast enough that progressive rendering adds motion without value",
+    "The output drives irreversible actions that must not execute from a partial result"
+  ],
+  "anatomy": [
+    {
+      "id": "output-region",
+      "description": "The container where generated content accumulates as it streams; focusable programmatically (tabindex=\"-1\") so it can receive focus when the stop control is removed out from under it.",
+      "required": true
+    },
+    {
+      "id": "activity-indicator",
+      "description": "Visible signal that generation is in progress, distinct from the content itself.",
+      "required": true
+    },
+    {
+      "id": "stop-control",
+      "description": "Control that interrupts the active stream and preserves partial output.",
+      "required": true
+    },
+    {
+      "id": "completion-status",
+      "description": "Non-visual status surface (live region) that reports stream completion or failure to assistive technology.",
+      "required": true
+    }
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "description": "No stream active; output region is empty or holds a prior response.",
+      "initial": true,
+      "transitionsTo": [
+        "streaming"
+      ]
+    },
+    {
+      "id": "streaming",
+      "description": "Tokens are arriving and rendering progressively.",
+      "transitionsTo": [
+        "completed",
+        "interrupted",
+        "errored"
+      ]
+    },
+    {
+      "id": "completed",
+      "description": "The stream finished normally; full output is displayed.",
+      "transitionsTo": [
+        "streaming"
+      ]
+    },
+    {
+      "id": "interrupted",
+      "description": "The user stopped the stream; partial output is preserved and labeled as partial.",
+      "transitionsTo": [
+        "streaming"
+      ]
+    },
+    {
+      "id": "errored",
+      "description": "The stream failed; any partial output is preserved and the failure is communicated.",
+      "transitionsTo": [
+        "streaming"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "id": "no-focus-steal",
+      "level": "MUST_NOT",
+      "category": "accessibility",
+      "statement": "The component MUST NOT move keyboard focus at stream start, during token rendering, or at settle while focus is outside the component.",
+      "rationale": "Stolen focus disorients keyboard and screen reader users and can silently discard what they were doing elsewhere on the page.",
+      "verification": "Unit test: with focus on an element outside the component, document.activeElement is identical across start, append, completion, interruption, and failure."
+    },
+    {
+      "id": "focus-not-lost",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "If the stop control holds focus when the stream settles and the control is removed, focus MUST move to the output region rather than being dropped on the document body.",
+      "rationale": "Removing a focused element silently resets focus to the body, stranding keyboard users at the top of the page; relocating to the output region is the smallest honest move and follows ARIA practice for disappearing controls.",
+      "verification": "Unit test: focus the stop control, settle the stream, and assert document.activeElement is the output region, not document.body."
+    },
+    {
+      "id": "completion-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Stream completion MUST be announced to assistive technology through a polite live region.",
+      "rationale": "Without an announcement, screen reader users have no signal that output stopped growing and the response is ready to read.",
+      "verification": "Unit test: the completion-status element has role=\"status\" (or aria-live=\"polite\") and its text content changes to a completion message when the stream completes — including on a second completion after a restart."
+    },
+    {
+      "id": "interruptible",
+      "level": "MUST",
+      "category": "interaction",
+      "statement": "A visible control MUST allow the user to stop generation at any point while the stream is active, and stopping MUST settle the component to the interrupted state even if the host has not yet acknowledged the stop.",
+      "rationale": "Long generations that cannot be stopped hold the user hostage; a stop that silently re-enters streaming because the host's cancellation is asynchronous is indistinguishable from a broken button.",
+      "verification": "Unit test: the stop control is rendered only while streaming; activating it invokes the stop callback exactly once and the state remains interrupted while the host still reports an active stream."
+    },
+    {
+      "id": "partial-preserved",
+      "level": "MUST",
+      "category": "resilience",
+      "statement": "Partial output MUST remain rendered and unobscured — not removed, visually hidden, or aria-hidden — after the stream is interrupted or fails.",
+      "rationale": "Partial output often contains the answer the user needed; discarding or hiding it turns an interruption into data loss.",
+      "verification": "Unit test: interrupt mid-stream and fail mid-stream; in both cases the partial text is still present in the document with no hidden or aria-hidden ancestor inside the component."
+    },
+    {
+      "id": "no-layout-shift",
+      "level": "SHOULD",
+      "category": "performance",
+      "statement": "Progressive rendering SHOULD avoid cumulative layout shift outside the output region.",
+      "rationale": "Content that pushes the rest of the page around while streaming makes surrounding controls unclickable moving targets.",
+      "verification": "E2E test measuring CLS contribution of elements outside the output region during a stream."
+    },
+    {
+      "id": "token-batching",
+      "level": "MAY",
+      "category": "performance",
+      "statement": "Implementations MAY batch token appends to reduce re-render frequency on long responses.",
+      "rationale": "Per-token renders can jank long responses; batching trades a few milliseconds of latency for sustained frame rate.",
+      "verification": "Code review of the append path; no behavioral assertion required."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "4.1.3",
+        "name": "Status Messages",
+        "level": "AA",
+        "relevance": "Stream completion and failure are status changes that must reach assistive technology without receiving focus."
+      },
+      {
+        "criterion": "2.2.2",
+        "name": "Pause, Stop, Hide",
+        "level": "A",
+        "relevance": "Streaming output is moving content; the stop control is the mechanism that satisfies the stop requirement."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Escape",
+        "action": "Stops the active stream when focus is within the component."
+      },
+      {
+        "keys": "Tab",
+        "action": "Reaches the stop control in normal document order while streaming; focus is never moved automatically."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Stream completes",
+        "behavior": "Polite announcement that the response is complete."
+      },
+      {
+        "when": "Stream fails",
+        "behavior": "Assertive announcement (alert) that generation failed, with the partial output kept."
+      },
+      {
+        "when": "User stops the stream",
+        "behavior": "Polite announcement that generation stopped."
+      }
+    ],
+    "focusManagement": "Focus never moves while it is outside the component. The single exception: if the stop control holds focus when the stream settles, focus moves to the output region (tabindex=\"-1\") instead of being dropped on the body by the control's removal.",
+    "reducedMotion": "Under prefers-reduced-motion, disable cursor-blink and typewriter-style animation; append text without transition effects."
+  },
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
+  "guidance": {
+    "do": [
+      "Reserve vertical space for the activity indicator so its appearance does not shift content",
+      "Render markdown block-by-block so half-open code fences do not flash as broken markup"
+    ],
+    "dont": [
+      "Do not animate per-character when the transport delivers multi-token chunks; animate at the chunk level or not at all",
+      "Do not auto-scroll the page to follow output while the user has scrolled away from the bottom"
+    ]
+  },
+  "relatedPatterns": [
+    "prompt-composer",
+    "error-recovery",
+    "generation-control"
+  ],
+  "references": [
+    {
+      "title": "WAI-ARIA 1.2: aria-live",
+      "url": "https://www.w3.org/TR/wai-aria-1.2/#aria-live"
+    },
+    {
+      "title": "WCAG 2.2 Understanding 4.1.3: Status Messages",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+    }
+  ]
+}

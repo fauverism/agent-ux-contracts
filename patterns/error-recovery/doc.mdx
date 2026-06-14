@@ -1,0 +1,49 @@
+---
+pattern: error-recovery
+---
+
+AI systems fail more often than traditional software and for stranger reasons:
+overloaded providers, context overflows, safety refusals, broken tools. The
+cost of a failure isn't the error itself — it's what happens to the user's
+work. A lost prompt converts a five-second hiccup into five minutes of
+retyping, which is why `input-preserved` is the pattern's first MUST.
+
+The second insight: not all failures are the same failure. Retrying a refusal
+verbatim cannot succeed; rephrasing a timeout wastes effort. The
+`FAILURE_COPY` taxonomy maps each failure kind to its own plain-language
+summary and its own recovery verb — "Try again" for transient faults, "Edit
+and resend" for refusals. Raw codes and provider messages exist, but behind a
+disclosure, where the curious can find them and nobody else has to.
+
+Every error state offers at least one action (`actionable-error`). A dead-end
+message is the UI equivalent of shrugging at the user.
+
+## Using the implementations
+
+```tsx
+import { ErrorRecovery } from './react/ErrorRecovery';
+
+<ErrorRecovery
+  failure={failure}              // null when healthy
+  input={prompt}
+  onInputChange={setPrompt}
+  onRetry={() => resubmit(prompt)}
+  partialOutput={partial}
+/>
+```
+
+```js
+import { ErrorRecovery } from './vanilla/ErrorRecovery.js';
+
+const recovery = new ErrorRecovery({ input: prompt, onRetry: () => resubmit(recovery.getInput()) });
+recovery.mount('#composer');
+recovery.showFailure({ kind: 'timeout', detail: 'request-id: abc123' });
+```
+
+## Agent notes
+
+Never clear or disable the input on failure — recovery starts from what the
+user already wrote. Classify before you render: mapping a refusal to a retry
+button teaches users the system is arbitrary. Replace error messages instead of
+stacking them, and keep any partial output visible; it may already contain the
+answer.

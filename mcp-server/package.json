@@ -1,0 +1,31 @@
+{
+  "name": "agent-ux-contracts-mcp",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "MCP server exposing search_patterns and scaffold_pattern over the agent-ux-contracts catalog.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --import tsx --test \"test/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "dev": "MCP_DEV=1 tsx src/index.ts",
+    "eval": "tsx evals/run.ts",
+    "check": "npm test && npm run typecheck && npm run eval"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "fuse.js": "^7.1.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.0"
+  }
+}

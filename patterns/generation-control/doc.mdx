@@ -1,0 +1,51 @@
+---
+pattern: generation-control
+---
+
+Regenerate buttons hide a destructive operation in friendly clothing. Because
+generation is non-deterministic, the variant you overwrite may be one the
+model never produces again — so in-place regeneration is data loss, dressed as
+iteration. `no-silent-destruction` makes history the load-bearing requirement:
+variants append, and the navigator can always walk back.
+
+Once history exists, position must be visible. "Variant 2 of 3" sounds
+cosmetic until you watch someone regenerate twice, see similar output, and
+wonder whether anything happened. The position label — visible and announced
+to assistive technology — is what makes alternatives *comparable* instead of a
+slot machine.
+
+The refine affordance is the difference between iteration and restart: a short
+adjustment ("shorter", "more formal") that rides along with the original
+context instead of replacing it. The contract is explicit that hosts append
+the refinement; substituting it silently turns refinement into a blank-slate
+retry that happens to share a text box.
+
+## Using the implementations
+
+```tsx
+import { GenerationControl } from './react/GenerationControl';
+
+<GenerationControl
+  initialOutput={draft}
+  withRefine
+  onGenerate={(refinement) => generate({ prompt, refinement })}
+/>
+```
+
+```js
+import { GenerationControl } from './vanilla/GenerationControl.js';
+
+new GenerationControl({
+  initialOutput: draft,
+  withRefine: true,
+  onGenerate: (refinement) => generate({ prompt, refinement }),
+}).mount('#output');
+```
+
+## Agent notes
+
+Keep the current variant rendered until its replacement is ready — no blank
+gap, and on failure the old variant simply stays. Guard against double-fires:
+regeneration is single-flight, with the busy state exposed via `aria-busy`.
+Disable navigation at the ends of history rather than wrapping; silent wrap
+makes users lose count of what they've seen.

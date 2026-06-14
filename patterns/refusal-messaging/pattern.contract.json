@@ -1,0 +1,235 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "refusal-messaging",
+  "version": "0.1.1",
+  "name": "Refusal Messaging",
+  "summary": "Present a model's refusal as a response, not an error: what was declined, why in plain language, and at least one forward path related to what the user wanted.",
+  "status": "draft",
+  "category": "feedback",
+  "aliases": [
+    "decline message",
+    "safety refusal",
+    "policy block",
+    "can't help message",
+    "the model refused"
+  ],
+  "tags": [
+    "refusals",
+    "trust",
+    "false-positives",
+    "copy"
+  ],
+  "problem": "Models decline requests, and most products render that as either a bare 'I can't help with that' or a defensive lecture. Both dead-end the user: no reason, no path forward, and — for false-positive refusals — an implication of wrongdoing that costs trust. Refusals are responses, not errors, and they need their own presentation contract.",
+  "useWhen": [
+    "The model or a policy layer declines all or part of a request",
+    "A request-specific reason and at least one related alternative are available from the host",
+    "False-positive refusals are possible and the presentation must preserve the user's dignity"
+  ],
+  "dontUseWhen": [
+    "The failure is technical, not policy — error-recovery owns timeouts, overloads, and tool errors",
+    "The governing policy forbids disclosing why the request was declined, so the pattern's core promise of a reason cannot be kept",
+    "The 'refusal' is actually a capability gap — say the feature does not exist instead of dressing it as policy"
+  ],
+  "anatomy": [
+    {
+      "id": "refusal-statement",
+      "description": "What was declined, stated plainly and scoped precisely to the declined portion.",
+      "required": true
+    },
+    {
+      "id": "reason",
+      "description": "Why it was declined, in plain language tied to this request — not a policy identifier.",
+      "required": true
+    },
+    {
+      "id": "alternatives",
+      "description": "One or more forward paths related to the user's intent: rephrase guidance, a narrower supported request, or partial help.",
+      "required": true
+    },
+    {
+      "id": "fulfilled-content",
+      "description": "The delivered portion of a partially-fulfilled request, rendered distinctly from the refusal.",
+      "required": false
+    },
+    {
+      "id": "policy-detail",
+      "description": "Expandable detail referencing the governing policy, for users who want it.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "description": "No refusal present.",
+      "initial": true,
+      "transitionsTo": [
+        "refused",
+        "partial-refusal"
+      ]
+    },
+    {
+      "id": "refused",
+      "description": "The whole request was declined; statement, reason, and alternatives are shown.",
+      "transitionsTo": [
+        "idle"
+      ]
+    },
+    {
+      "id": "partial-refusal",
+      "description": "Part of the request was fulfilled and delivered; the refusal is scoped to the declined remainder.",
+      "transitionsTo": [
+        "idle"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "id": "reason-given",
+      "level": "MUST",
+      "category": "content",
+      "statement": "Every refusal MUST state what was declined and why in plain language specific to the request; a bare statement of inability with no reason is non-compliant.",
+      "rationale": "A reasonless refusal reads as arbitrary, invites blind retries, and teaches users nothing about what the product can do.",
+      "verification": "Unit test: the component requires a reason and renders both the statement and the reason as visible text."
+    },
+    {
+      "id": "alternative-offered",
+      "level": "MUST",
+      "category": "content",
+      "statement": "Every refusal MUST present at least one forward path related to the declined request: rephrase guidance, a narrower supported request, or partial help.",
+      "rationale": "A refusal with no exit is a dead end; the user's underlying intent is usually servable in some adjacent form.",
+      "verification": "Unit test: constructing the component without alternatives fails loudly; provided alternatives render as operable actions."
+    },
+    {
+      "id": "no-verbatim-retry",
+      "level": "MUST_NOT",
+      "category": "interaction",
+      "statement": "The component MUST NOT offer a verbatim retry action on a refusal; an identical request cannot succeed and a retry control teaches users the system is arbitrary.",
+      "rationale": "Retry is the right affordance for transient technical failures and the wrong one for policy decisions; offering it on refusals erodes the meaning of both.",
+      "verification": "Unit test: the rendered actions are exactly the provided alternatives — no built-in retry control exists."
+    },
+    {
+      "id": "partial-honored",
+      "level": "MUST",
+      "category": "content",
+      "statement": "When part of a request is fulfilled and part declined, the fulfilled portion MUST be delivered and the refusal scoped explicitly to the declined remainder.",
+      "rationale": "Withholding the answerable half of a request because the other half was declined punishes the user twice and hides capability the product actually has.",
+      "verification": "Unit test: the partial-refusal state renders the fulfilled content and the refusal region as distinct, co-present regions."
+    },
+    {
+      "id": "refusal-distinct-from-error",
+      "level": "MUST",
+      "category": "content",
+      "statement": "The refusal presentation MUST be semantically distinct from technical-failure presentation: status semantics rather than alert, and no iconography implying malfunction.",
+      "rationale": "A refusal styled as an error tells the user something broke; what actually happened is the system made a decision, which calls for a different mental model and different next steps.",
+      "verification": "Unit test: the refusal region carries status semantics, no role=\"alert\" exists in the component, and the state attribute identifies it as a refusal."
+    },
+    {
+      "id": "refusal-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "A refusal MUST be announced through a polite live region; it replaces expected content and is not an emergency.",
+      "rationale": "Screen reader users waiting on a response need to hear that the answer is a decline — politely, since nothing is on fire.",
+      "verification": "Unit test: the live region text changes to a refusal announcement when the refusal renders, and differs for partial refusals."
+    },
+    {
+      "id": "alternatives-accessible",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Alternative actions MUST be keyboard-operable controls with accessible names describing the path they offer.",
+      "rationale": "The forward path is the point of the pattern; if it is pointer-only or unnamed, the refusal is still a dead end for keyboard and screen reader users.",
+      "verification": "Unit test plus axe: each alternative is a native button or link whose accessible name is its path description."
+    },
+    {
+      "id": "no-moralizing",
+      "level": "SHOULD_NOT",
+      "category": "content",
+      "statement": "The refusal copy SHOULD NOT lecture, moralize, or speculate about the user's intent.",
+      "rationale": "Most refusals land on people doing nothing wrong; a paragraph of scolding for an ambiguous request costs trust that a one-sentence decline preserves.",
+      "verification": "Manual copy review: refusal copy states the decision and reason without commentary on the user."
+    },
+    {
+      "id": "policy-detail-available",
+      "level": "MAY",
+      "category": "content",
+      "statement": "Implementations MAY provide an expandable detail region referencing the governing policy.",
+      "rationale": "A minority of users want the underlying rule; an optional disclosure serves them without burdening the rest.",
+      "verification": "Unit test: the disclosure, if present, toggles with aria-expanded and is keyboard-operable."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "4.1.3",
+        "name": "Status Messages",
+        "level": "AA",
+        "relevance": "The refusal is a status change that must reach assistive technology without receiving focus."
+      },
+      {
+        "criterion": "3.3.3",
+        "name": "Error Suggestion",
+        "level": "AA",
+        "relevance": "Alternatives are the suggestion mechanism: when the system knows a servable adjacent request, it must offer it."
+      },
+      {
+        "criterion": "2.1.1",
+        "name": "Keyboard",
+        "level": "A",
+        "relevance": "Alternative actions and the policy disclosure must be fully operable without a pointer."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches each alternative action and the policy disclosure in document order."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Activates the focused alternative or toggles the policy disclosure."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Refusal renders",
+        "behavior": "Polite announcement that the request was declined — or partially completed with the remainder declined."
+      },
+      {
+        "when": "An alternative receives focus",
+        "behavior": "Announces the path it offers, e.g. 'Ask for a summary of the public filing instead'."
+      }
+    ],
+    "focusManagement": "The refusal's appearance never moves focus; alternatives are reached in document order.",
+    "reducedMotion": "No attention-seeking animation on the refusal region; the policy disclosure toggles instantly."
+  },
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
+  "guidance": {
+    "do": [
+      "Scope the statement precisely: 'I can't draft the contract itself' beats 'I can't help with legal'.",
+      "Make alternatives concrete actions, not vague advice: a clickable 'Explain what each clause means' beats 'try asking differently'.",
+      "Deliver the fulfilled half of a mixed request first, then the scoped refusal."
+    ],
+    "dont": [
+      "Do not render refusals with error styling, alert roles, or warning icons.",
+      "Do not offer a retry button — the same request will refuse again.",
+      "Do not pad the decline with apologies and disclaimers; one respectful sentence, a reason, and a path forward."
+    ]
+  },
+  "relatedPatterns": [
+    "error-recovery",
+    "confidence-indicator",
+    "prompt-composer"
+  ],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 4.1.3: Status Messages",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+    },
+    {
+      "title": "Microsoft HAX Toolkit — Guidelines for Human-AI Interaction",
+      "url": "https://www.microsoft.com/en-us/haxtoolkit/",
+      "note": "See G11 'Make clear why the system did what it did' — the reason-given rule applied to AI behavior broadly."
+    }
+  ]
+}

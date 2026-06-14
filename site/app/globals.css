@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+@import '../styles/tokens.css';
+@import '../styles/primitives.css';
+
+/* Expose tokens to Tailwind utilities (bg-paper, text-ink-45, font-mono…).
+   Utilities are for page layout; the primitives own their own CSS. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-70: var(--ink-70);
+  --color-ink-45: var(--ink-45);
+  --color-accent: var(--accent);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-c-black: var(--c-black);
+  --color-c-white: var(--c-white);
+  --color-c-grey: var(--c-grey);
+  --color-c-purple: var(--c-purple);
+  --color-c-fuschia: var(--c-fuschia);
+  --color-c-blue: var(--c-blue);
+  --color-c-green: var(--c-green);
+  --color-c-orange: var(--c-orange);
+  --color-c-yellow: var(--c-yellow);
+  --font-text: var(--font-text);
+  --font-mono: var(--font-mono);
+}

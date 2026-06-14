@@ -1,0 +1,182 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "source-attribution",
+  "version": "0.1.0",
+  "name": "Source Attribution",
+  "summary": "Link generated content back to its sources—retrieved documents, web pages, citations—so users can verify claims and judge reliability.",
+  "status": "draft",
+  "category": "transparency",
+  "aliases": ["citations", "provenance", "reference tracking", "source links"],
+  "tags": ["retrieval", "hallucination-guard", "fact-checking", "credibility"],
+  "problem": "Generated responses cite sources or claim knowledge but provide no way for users to verify those sources. Users cannot distinguish between retrieval-grounded facts and hallucinations, and cannot judge the credibility of the source.",
+  "useWhen": [
+    "The response is grounded in retrieved documents or external data",
+    "Users need to verify claims or audit the model's reasoning",
+    "The sources are publicly accessible and verifiable"
+  ],
+  "dontUseWhen": [
+    "Sources are proprietary, internal, or cannot be shared",
+    "The response is pure reasoning or generation with no retrieval component",
+    "Source links would be overwhelming or distract from the response"
+  ],
+  "anatomy": [
+    {
+      "id": "citation-anchor",
+      "description": "The text or phrase within the response that is cited; highlighted or numbered.",
+      "required": true
+    },
+    {
+      "id": "source-link",
+      "description": "A clickable, keyboard-accessible link to the source document, page, or data.",
+      "required": true
+    },
+    {
+      "id": "source-metadata",
+      "description": "Title, author, publication date, and domain of the source; shown on hover or in a modal.",
+      "required": false
+    },
+    {
+      "id": "citation-list",
+      "description": "A consolidated list of all sources at the end of the response for batch inspection.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "uncited",
+      "description": "Content with no source attribution.",
+      "initial": true
+    },
+    {
+      "id": "cited",
+      "description": "Content with one or more sources linked."
+    },
+    {
+      "id": "source-expanded",
+      "description": "User has expanded a source to see metadata or full context."
+    },
+    {
+      "id": "broken-link",
+      "description": "A source link is dead or inaccessible."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "citation-clickable",
+      "level": "MUST",
+      "category": "interaction",
+      "statement": "Every citation anchor MUST be keyboard-accessible and clickable, not just hover-based.",
+      "rationale": "Keyboard and mobile users must be able to reach citations without a pointing device.",
+      "verification": "E2E test: Tab to citation anchor and activate via Enter; assert source opens."
+    },
+    {
+      "id": "source-verifiable",
+      "level": "MUST",
+      "category": "content",
+      "statement": "A citation MUST link to a source that is publicly accessible and can be independently verified.",
+      "rationale": "Citations to inaccessible or private sources are worse than no citation; they mislead users into trusting unverifiable claims.",
+      "verification": "Code review: verify all source URLs are public and valid; periodically audit links for rot."
+    },
+    {
+      "id": "citation-distinct",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Citations MUST be visually distinct from surrounding text and communicable via assistive technology; color alone is insufficient.",
+      "rationale": "Color-blind and screen reader users must perceive citations and be able to reach them.",
+      "verification": "Automated a11y test: citation anchors carry a non-color affordance (marker glyph or superscript number) and an accessible name; axe check passes."
+    },
+    {
+      "id": "metadata-available",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Source metadata (title, author, date, domain) SHOULD be available without leaving the page, via tooltip, modal, or adjacent panel.",
+      "rationale": "Users need to judge source credibility before leaving the page; metadata reduces friction.",
+      "verification": "Manual review: activate a citation anchor and confirm source metadata is reachable without page navigation."
+    },
+    {
+      "id": "uncited-labeled",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Passages that are reasoning or generation (not retrieval) SHOULD be visually distinct or labeled to signal they are not cited.",
+      "rationale": "Users conflate cited and uncited passages without distinction; labeling prevents false trust.",
+      "verification": "Manual review: confirm uncited passages are styled or labeled differently from cited ones."
+    },
+    {
+      "id": "no-citation-spam",
+      "level": "MUST_NOT",
+      "category": "content",
+      "statement": "The component MUST NOT cite the same source multiple times for identical claims; consolidate or re-phrase to avoid citation spam.",
+      "rationale": "Redundant citations clutter the response and suggest the model is padding citations rather than reasoning.",
+      "verification": "Unit test: registering the same source id twice yields one source-list entry referenced by both anchors."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "2.1.1",
+        "name": "Keyboard",
+        "level": "A",
+        "relevance": "Citation anchors and links must be keyboard-reachable and activatable."
+      },
+      {
+        "criterion": "1.4.1",
+        "name": "Use of Color",
+        "level": "A",
+        "relevance": "Citations must not rely on color alone to distinguish them from surrounding text."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "Citation links must have accessible names and roles."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches each citation anchor and source link in document order."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Opens the source link or expands source metadata."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Citation anchor is focused",
+        "behavior": "Screen reader announces the cited text and that a source is available."
+      },
+      {
+        "when": "Source link is focused",
+        "behavior": "Screen reader announces the source title or URL."
+      }
+    ],
+    "focusManagement": "Focus moves naturally through citations in document order; no forced jumps.",
+    "reducedMotion": "Expand/collapse animations are disabled; regions appear instantly."
+  },
+  "implementations": ["react", "vanilla"],
+  "guidance": {
+    "do": [
+      "Use superscript numbers or brackets [1] for citations; they are universally understood.",
+      "Consolidate sources in a bibliography at the end; users often want to see all sources at once.",
+      "Show source metadata (date, domain) to help users judge credibility quickly."
+    ],
+    "dont": [
+      "Do not force users to leave the page to see source metadata.",
+      "Do not cite opinion pieces or user-generated content as fact without labeling.",
+      "Do not cite the same source multiple times for the same claim."
+    ]
+  },
+  "relatedPatterns": ["streaming-response"],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 2.1.1: Keyboard",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html"
+    },
+    {
+      "title": "Attributed Question Answering: Evaluation and Modeling for Attributed Large Language Models",
+      "url": "https://arxiv.org/abs/2212.08037",
+      "note": "Foundational work on evaluating whether generated answers are actually supported by their cited sources."
+    }
+  ]
+}

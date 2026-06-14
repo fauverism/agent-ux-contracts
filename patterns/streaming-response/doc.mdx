@@ -1,0 +1,52 @@
+---
+pattern: streaming-response
+---
+
+Streaming is the default texture of AI interfaces, and almost everyone gets the
+same three things wrong: focus jumps when the stream starts, screen readers hear
+nothing when it ends, and stopping a bad generation either isn't possible or
+throws away the partial output. The contract pins all three.
+
+The component is deliberately dumb about transport. It doesn't know about SSE,
+fetch readers, or WebSockets — the host accumulates tokens and hands over
+content. That keeps the contract testable: every constraint is about what's on
+screen, not what's on the wire.
+
+## Using the React implementation
+
+```tsx
+import { StreamingResponse } from './react/StreamingResponse';
+
+const [isStreaming, setIsStreaming] = useState(false);
+const [content, setContent] = useState('');
+
+<StreamingResponse
+  isStreaming={isStreaming}
+  content={content}
+  onStop={() => abortController.abort()}
+/>
+```
+
+Batch token appends in the parent (the `token-batching` MAY constraint lives
+with you, not the component) — accumulate chunks and update `content` at
+animation-frame cadence rather than per token.
+
+## Using the vanilla implementation
+
+```js
+import { StreamingResponse } from './vanilla/StreamingResponse.js';
+
+const view = new StreamingResponse({ onStop: () => abortController.abort() });
+view.mount('#output');
+view.startStream();
+view.appendContent(chunk); // per batch, not per token
+view.completeStream();     // or view.failStream(message)
+```
+
+## Agent notes
+
+When scaffolding this pattern, the constraints most often violated by generated
+code are `no-focus-steal` (resist the urge to `focus()` the output or the stop
+button) and `completion-announced` (the live region must exist in the DOM
+*before* the stream starts, or assistive tech never registers it). Keep the
+stop control rendered while — and only while — the stream is active.

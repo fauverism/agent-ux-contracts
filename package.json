@@ -1,0 +1,31 @@
+{
+  "name": "agent-ux-contracts",
+  "private": true,
+  "type": "module",
+  "description": "Catalog of AI interface UX patterns: machine-readable contracts, generated docs, reference implementations, MCP server.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --import tsx --import ./scripts/setup-dom.mjs --test schema/pattern-contract.test.mjs \"patterns/**/*.test.tsx\" \"patterns/**/*.test.mjs\"",
+    "validate": "node scripts/validate-contracts.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "npm test && npm run validate && npm run typecheck && npm --prefix mcp-server run check && npm --prefix site run typecheck",
+    "new-pattern": "node scripts/new-pattern.mjs"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.9.2",
+    "@types/react": "^19.0.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "axe-core": "^4.12.1",
+    "global-jsdom": "^29.0.0",
+    "jsdom": "^29.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.2.7",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "thinking-visibility",
+  "version": "0.1.0",
+  "name": "Thinking Visibility",
+  "summary": "Expose the model's intermediate reasoning in a collapsible, clearly-labeled region so long waits feel accountable without letting working notes masquerade as the answer.",
+  "status": "draft",
+  "category": "transparency",
+  "aliases": ["chain of thought display", "reasoning trace", "extended thinking", "show your work"],
+  "tags": ["reasoning", "latency", "disclosure", "agent-steps"],
+  "problem": "Reasoning models work for seconds or minutes before answering. Hiding that work makes the wait feel like a hang and the answer feel oracular; dumping all of it buries the answer in noise and invites users to treat speculative intermediate thoughts as conclusions.",
+  "useWhen": [
+    "The model emits intermediate reasoning or agent steps before its final answer",
+    "Response latency is long enough that users need evidence work is happening",
+    "Users benefit from auditing how the model reached its conclusion"
+  ],
+  "dontUseWhen": [
+    "No intermediate reasoning is available from the model or API",
+    "Responses are near-instant and a reasoning region would add noise without value",
+    "The audience would mistake raw reasoning for the product's official answer despite labeling"
+  ],
+  "anatomy": [
+    {
+      "id": "thinking-disclosure",
+      "description": "The keyboard-operable control that expands and collapses the reasoning region.",
+      "required": true
+    },
+    {
+      "id": "thinking-region",
+      "description": "The container where intermediate reasoning or agent steps render, visually subordinate to the answer.",
+      "required": true
+    },
+    {
+      "id": "phase-status",
+      "description": "Non-visual status surface (live region) that reports phase transitions: thinking, answering, complete.",
+      "required": true
+    },
+    {
+      "id": "answer-region",
+      "description": "The final answer, rendered as the primary content once available.",
+      "required": true
+    }
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "description": "No request in flight; no reasoning to show.",
+      "initial": true,
+      "transitionsTo": ["thinking"]
+    },
+    {
+      "id": "thinking",
+      "description": "The model is reasoning; the thinking region fills progressively.",
+      "transitionsTo": ["answering", "completed"]
+    },
+    {
+      "id": "answering",
+      "description": "Reasoning has finished and the final answer is being produced.",
+      "transitionsTo": ["completed"]
+    },
+    {
+      "id": "completed",
+      "description": "The answer is complete; reasoning is collapsed but available."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "reasoning-distinct",
+      "level": "MUST",
+      "category": "content",
+      "statement": "Intermediate reasoning MUST be rendered in a region that is visually and semantically distinct from the final answer.",
+      "rationale": "Users skim; if working notes and conclusions share one visual register, speculative reasoning gets quoted as the product's answer.",
+      "verification": "Manual review plus axe: the reasoning region is a separately labeled group, distinct in typography or containment from the answer region."
+    },
+    {
+      "id": "disclosure-accessible",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "The reasoning disclosure MUST be a keyboard-operable control whose aria-expanded state reflects the region's visibility.",
+      "rationale": "A hover-only or pointer-only disclosure makes reasoning inaccessible to keyboard and assistive technology users.",
+      "verification": "Unit test: activating the disclosure via keyboard toggles the region and the control's aria-expanded value."
+    },
+    {
+      "id": "phase-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Transitions between thinking, answering, and completed MUST be announced through a polite live region.",
+      "rationale": "Screen reader users otherwise experience a multi-second silent gap with no evidence the system is working.",
+      "verification": "Unit test: the phase-status element has aria-live polite and its text updates on each phase change."
+    },
+    {
+      "id": "non-blocking",
+      "level": "MUST_NOT",
+      "category": "interaction",
+      "statement": "The reasoning display MUST NOT block interaction with the rest of the page while the model is thinking.",
+      "rationale": "Thinking can run for minutes; locking the interface holds the user hostage to a process they may want to abandon or work around.",
+      "verification": "E2E test: while in the thinking state, focus and activate controls outside the component."
+    },
+    {
+      "id": "collapse-after-answer",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Once the answer is available, the reasoning region SHOULD collapse by default so the answer is the primary content.",
+      "rationale": "The answer is what users came for; expanded reasoning above it pushes the conclusion below the fold.",
+      "verification": "Unit test: transition to completed collapses the region unless the user explicitly expanded it."
+    },
+    {
+      "id": "working-notes-label",
+      "level": "SHOULD",
+      "category": "content",
+      "statement": "Displayed reasoning SHOULD be labeled as working notes or thinking rather than presented with the same authority as the answer.",
+      "rationale": "Intermediate reasoning can contain abandoned hypotheses and errors; labeling calibrates how much trust users place in it.",
+      "verification": "Manual review: the reasoning region carries an explicit label such as 'Working notes'."
+    },
+    {
+      "id": "reasoning-opt-out",
+      "level": "MAY",
+      "category": "interaction",
+      "statement": "Implementations MAY offer a persistent preference to hide reasoning entirely.",
+      "rationale": "Some users never want the noise; a remembered preference beats forcing a collapse interaction every response.",
+      "verification": "Code review: preference, if present, persists across sessions."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "4.1.3",
+        "name": "Status Messages",
+        "level": "AA",
+        "relevance": "Phase transitions are status changes that must reach assistive technology without receiving focus."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "The disclosure control must expose its name, role, and expanded state."
+      },
+      {
+        "criterion": "2.1.1",
+        "name": "Keyboard",
+        "level": "A",
+        "relevance": "Expanding and collapsing reasoning must work without a pointer."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches the thinking disclosure in document order; focus is never moved automatically."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Toggles the reasoning region when the disclosure is focused."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Thinking begins",
+        "behavior": "Polite announcement that the model is working."
+      },
+      {
+        "when": "Answer begins or completes",
+        "behavior": "Polite announcement of the phase change so the silent gap is accounted for."
+      },
+      {
+        "when": "Disclosure is focused",
+        "behavior": "Announces the control's name and whether the reasoning region is expanded or collapsed."
+      }
+    ],
+    "focusManagement": "Focus never moves automatically on phase changes; the disclosure is reached in document order and expansion does not relocate focus.",
+    "reducedMotion": "No animated expand/collapse, shimmer, or pulsing effects under prefers-reduced-motion; the region toggles instantly."
+  },
+  "implementations": ["react", "vanilla"],
+  "guidance": {
+    "do": [
+      "Stream reasoning into the region as it arrives so the wait is visibly productive.",
+      "Keep the disclosure visible during thinking so users can peek without committing to it.",
+      "Summarize agent steps as discrete entries when the reasoning is tool-call shaped."
+    ],
+    "dont": [
+      "Do not replay reasoning with an artificial typewriter delay after it has already arrived.",
+      "Do not render reasoning in the same typography and container as the answer.",
+      "Do not auto-expand the reasoning region after the answer is complete."
+    ]
+  },
+  "relatedPatterns": ["streaming-response", "confidence-indicator"],
+  "references": [
+    {
+      "title": "ARIA Authoring Practices Guide: Disclosure pattern",
+      "url": "https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/"
+    },
+    {
+      "title": "WCAG 2.2 Understanding 4.1.3: Status Messages",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+    }
+  ]
+}

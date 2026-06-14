@@ -1,0 +1,64 @@
+---
+pattern: refusal-messaging
+---
+
+A refusal is a response, not an error — and most products get this wrong in
+one of two directions. The terse direction renders "I can't help with that"
+and nothing else: no reason, no path forward, and a user who has learned
+only that the system is arbitrary. The defensive direction wraps the decline
+in a paragraph of policy language and implied suspicion — expensive because
+false-positive refusals land on people doing nothing wrong, and a lecture
+for an ambiguous request costs trust a one-sentence decline would have kept.
+
+The contract's structure is the fix: every refusal carries *what* was
+declined (scoped precisely), *why* (in plain language tied to this request,
+not a policy id), and *at least one forward path related to the intent* —
+enforced loudly: both implementations refuse to render a refusal without an
+alternative. The one action a refusal must never offer is verbatim retry:
+the same request will refuse again, and a retry button on a policy decision
+erodes the meaning of retry everywhere else in the product.
+
+Partial refusals get first-class treatment because the all-or-nothing
+default punishes users twice: when half a request is answerable, the
+answerable half is delivered and the refusal scopes itself to the remainder.
+And the presentation is deliberately *not* error UI — status semantics, no
+alert role, no warning iconography — because "the system decided" and "the
+system broke" call for different mental models and different next steps
+(error-recovery owns the second one).
+
+## Using the implementations
+
+```tsx
+import { RefusalMessaging } from './react/RefusalMessaging';
+
+<RefusalMessaging
+  statement="I can't draft the contract itself."
+  reason="Drafting binding legal documents needs a licensed attorney."
+  alternatives={[
+    { label: 'Explain what each clause means', onSelect: explainClauses },
+    { label: 'See supported document types', href: '/docs/supported' },
+  ]}
+  policyDetail="Unauthorized-practice-of-law policy."
+/>
+```
+
+```js
+import { RefusalMessaging } from './vanilla/RefusalMessaging.js';
+
+new RefusalMessaging({
+  statement: "I can't draft the contract itself.",
+  reason: 'Drafting binding legal documents needs a licensed attorney.',
+  alternatives: [{ label: 'Explain what each clause means', onSelect: explainClauses }],
+  fulfilledText: 'Here is a plain-English summary of your draft…', // partial refusal
+}).mount('#response');
+```
+
+## Agent notes
+
+Never render a refusal without a reason and at least one alternative — the
+implementations throw if you try. Never add a retry button or error/alert
+styling. Scope the statement to exactly what was declined; deliver the
+fulfilled portion of mixed requests. Keep the copy to a respectful sentence
+plus a reason — no lectures, no speculation about intent (SHOULD-level,
+enforced by copy review). Route technical failures to error-recovery
+instead; its refusal-distinguished rule routes policy declines here.

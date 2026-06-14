@@ -1,0 +1,249 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "approval-gate",
+  "version": "0.1.1",
+  "name": "Approval Gate",
+  "summary": "Require explicit, informed user consent before an agent executes a consequential action, with an accurate preview of exactly what will run.",
+  "status": "draft",
+  "category": "control",
+  "aliases": [
+    "human in the loop",
+    "confirmation gate",
+    "action approval",
+    "consent prompt",
+    "delete confirmation"
+  ],
+  "tags": [
+    "agency",
+    "side-effects",
+    "safety",
+    "consent",
+    "destructive"
+  ],
+  "problem": "Agents propose actions with real side effects: sending email, deleting records, spending money. Executing without explicit consent destroys trust and can cause irreversible harm, while over-prompting for trivial actions trains users to approve reflexively, which is consent in name only.",
+  "useWhen": [
+    "An agent action has side effects outside the conversation: messages sent, data changed, money spent",
+    "The action is irreversible or expensive to reverse",
+    "Accountability requires a human decision on record before execution"
+  ],
+  "dontUseWhen": [
+    "The action is trivially reversible and low-stakes, where gating adds fatigue without safety",
+    "The user has durably delegated this action class and revocation is available elsewhere",
+    "Read-only operations with no side effects are involved"
+  ],
+  "anatomy": [
+    {
+      "id": "action-summary",
+      "description": "Plain-language description of exactly what will happen: the verb, the target, the scope.",
+      "required": true
+    },
+    {
+      "id": "action-detail",
+      "description": "Expandable view of the full payload — the actual email text, the command, the diff — so consent is informed.",
+      "required": true
+    },
+    {
+      "id": "approve-control",
+      "description": "The control that authorizes execution; labeled with the action, not a generic OK.",
+      "required": true
+    },
+    {
+      "id": "reject-control",
+      "description": "The control that declines execution and returns control to the user.",
+      "required": true
+    },
+    {
+      "id": "consequence-note",
+      "description": "Indicator of reversibility and scope, e.g. 'Cannot be undone' or 'Affects 14 records'.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "proposed",
+      "description": "The action awaits a decision; nothing has executed.",
+      "initial": true,
+      "transitionsTo": [
+        "approved",
+        "rejected",
+        "expired"
+      ]
+    },
+    {
+      "id": "approved",
+      "description": "The user authorized the action; execution may begin.",
+      "transitionsTo": [
+        "executing"
+      ]
+    },
+    {
+      "id": "executing",
+      "description": "The approved action is running.",
+      "transitionsTo": [
+        "completed",
+        "failed"
+      ]
+    },
+    {
+      "id": "completed",
+      "description": "The action executed successfully; the outcome is reported."
+    },
+    {
+      "id": "failed",
+      "description": "Execution failed after approval; the failure and any partial effects are reported."
+    },
+    {
+      "id": "rejected",
+      "description": "The user declined; the action is discarded and nothing executed."
+    },
+    {
+      "id": "expired",
+      "description": "The proposal lapsed without a decision; executing now requires fresh review."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "explicit-consent",
+      "level": "MUST_NOT",
+      "category": "interaction",
+      "statement": "The proposed action MUST NOT execute without an explicit, affirmative activation of the approve control — never on timeout, scroll, or focus.",
+      "rationale": "Anything that executes without a deliberate user gesture is not consent, and one silent execution destroys trust in every future proposal.",
+      "verification": "Unit test: no code path reaches the approve callback except activation of the approve control; timers and lifecycle events do not."
+    },
+    {
+      "id": "accurate-preview",
+      "level": "MUST",
+      "category": "content",
+      "statement": "The action summary and detail MUST describe the exact action that will execute, including target, scope, and payload.",
+      "rationale": "Consent to a vague summary is not informed consent; if the executed payload differs from the preview, the gate is theater.",
+      "verification": "Integration test: the payload rendered in the detail region is byte-identical to the payload passed to execution."
+    },
+    {
+      "id": "no-preselected-approve",
+      "level": "MUST_NOT",
+      "category": "interaction",
+      "statement": "The approve control MUST NOT receive focus automatically when the gate appears.",
+      "rationale": "Auto-focused approve buttons convert muscle-memory Enter presses into authorization of consequential actions.",
+      "verification": "Unit test: document.activeElement is unchanged immediately after the gate renders."
+    },
+    {
+      "id": "irreversible-labeled",
+      "level": "MUST",
+      "category": "content",
+      "statement": "Actions that cannot be undone MUST be labeled as irreversible within the action summary.",
+      "rationale": "Reversibility is the single largest input to the approval decision; omitting it makes the risk invisible exactly when it matters.",
+      "verification": "Unit test: the irreversible flag renders a visible 'cannot be undone' label inside the summary group."
+    },
+    {
+      "id": "controls-accessible",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "Approve and reject MUST be keyboard-operable controls with accessible names that distinguish approval from rejection and name the action.",
+      "rationale": "A screen reader user hearing 'button, OK' cannot tell what they are authorizing; the accessible name must carry the decision.",
+      "verification": "Axe check plus unit test: both controls are native buttons (or equivalent role) with names like 'Approve: send email' and 'Reject'."
+    },
+    {
+      "id": "gate-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "The arrival of a pending approval MUST be announced to assistive technology.",
+      "rationale": "A gate that appears silently leaves screen reader users with a stalled agent and no explanation of what it is waiting for.",
+      "verification": "Unit test: a live region announces the pending proposal when the gate mounts."
+    },
+    {
+      "id": "fatigue-batching",
+      "level": "SHOULD",
+      "category": "interaction",
+      "statement": "Repeated, similar low-risk proposals SHOULD be batchable or groupable so users are not trained to approve reflexively.",
+      "rationale": "Approval fatigue is the failure mode of consent: after twenty identical prompts, users stop reading and the gate stops protecting.",
+      "verification": "Design review: flows generating many similar proposals offer a batch decision or scoped delegation."
+    },
+    {
+      "id": "proposal-expiry",
+      "level": "MAY",
+      "category": "state",
+      "statement": "Proposals MAY expire after inactivity; an expired proposal requires fresh review before execution.",
+      "rationale": "Stale proposals can describe a world that no longer exists; expiry forces re-validation of the preview against current state.",
+      "verification": "Unit test: an expired proposal cannot be approved without re-issuing it."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "3.3.4",
+        "name": "Error Prevention (Legal, Financial, Data)",
+        "level": "AA",
+        "relevance": "Consequential submissions must be reviewable, confirmable, and reversible — the approval gate is the mechanism."
+      },
+      {
+        "criterion": "2.1.1",
+        "name": "Keyboard",
+        "level": "A",
+        "relevance": "Both decision controls must be fully operable without a pointer."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "Decision controls must expose accessible names that carry the action being authorized."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Moves through summary, detail disclosure, reject, then approve; reject precedes approve in document order."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Activates the focused control only; no global Enter-to-approve."
+      },
+      {
+        "keys": "Escape",
+        "action": "Rejects the proposal while focus is inside the gate."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Gate appears",
+        "behavior": "Announcement that an action awaits approval, including the action summary."
+      },
+      {
+        "when": "Decision is made",
+        "behavior": "Announcement of the outcome: approved and executing, rejected, completed, or failed."
+      }
+    ],
+    "focusManagement": "Focus is not stolen on appearance and never lands on approve by default; if rendered as a blocking modal, focus moves to the gate container and returns to the trigger on dismissal.",
+    "reducedMotion": "No pulsing or shaking attention effects under prefers-reduced-motion; use static visual emphasis."
+  },
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
+  "guidance": {
+    "do": [
+      "Name the action in the approve button: 'Approve: send 3 emails', not 'OK'.",
+      "Show mutations as diffs in the detail region so before and after are explicit.",
+      "Scope each gate to one action; a single approval for a bundle of unlike actions is not informed consent."
+    ],
+    "dont": [
+      "Do not auto-approve on a countdown; a timer is not a decision.",
+      "Do not bury the payload behind multiple clicks; one disclosure at most.",
+      "Do not reuse generic OK/Cancel labels that hide what is being authorized."
+    ]
+  },
+  "relatedPatterns": [
+    "confidence-indicator",
+    "error-recovery"
+  ],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 3.3.4: Error Prevention (Legal, Financial, Data)",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/error-prevention-legal-financial-data.html"
+    },
+    {
+      "title": "ARIA Authoring Practices Guide: Dialog (Modal) pattern",
+      "url": "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/",
+      "note": "Focus management requirements when the gate is rendered as a blocking modal."
+    }
+  ]
+}

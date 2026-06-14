@@ -1,0 +1,67 @@
+---
+pattern: prompt-composer
+---
+
+The chat composer is the most-used control in any AI product and the most
+casually broken. It looks like a textarea, but it overturns the textarea's
+oldest convention: Enter sends. That single decision creates every other
+obligation in this contract — the mapping must be hinted because it's
+non-native, Shift+Enter must keep newlines reachable, and Enter must be
+ignored during IME composition, where it confirms a character conversion.
+Skip that last check and the product fires half-written messages for every
+Japanese, Chinese, and Korean user.
+
+Two more failure modes hide in the "obvious" implementation. Native
+`maxLength` enforces budgets by silently eating keystrokes and pasted text —
+this contract forbids it in favor of a visible over-limit state that keeps
+every character and gates only the send. And disabling the textarea while a
+message sends feels tidy but blocks exactly what users do during the wait:
+start the next message or fix the current one.
+
+The submit button never disappears and is never natively disabled. It stays
+focusable with `aria-disabled` plus a described-by reason ("Message is
+empty", "Sending in progress"), so a screen reader user always knows whether
+the product can send and why it currently won't.
+
+## Using the implementations
+
+```tsx
+import { PromptComposer } from './react/PromptComposer';
+
+<PromptComposer
+  value={draft}
+  onChange={setDraft}
+  busy={sending}
+  maxLength={4000}
+  onSubmit={async (text) => {
+    await send(text);
+    setDraft(''); // clear only after the submission is accepted
+  }}
+/>
+```
+
+```js
+import { PromptComposer } from './vanilla/PromptComposer.js';
+
+const composer = new PromptComposer({
+  maxLength: 4000,
+  onSubmit: async (text) => {
+    composer.setBusy(true);
+    try {
+      await send(text);
+      composer.clear(); // only on success
+    } finally {
+      composer.setBusy(false);
+    }
+  },
+});
+composer.mount('#composer');
+```
+
+## Agent notes
+
+Never emit a `maxLength` attribute on the textarea. Always check
+`isComposing` before treating Enter as send. The placeholder is not the
+label and not the hint — render all three. Clear the draft only on confirmed
+acceptance; pairing this pattern with error-recovery means a failed send
+drops the user back into a composer that still holds their words.

@@ -1,0 +1,222 @@
+{
+  "$schema": "../../schema/pattern-contract.schema.json",
+  "id": "interruption-cancel",
+  "version": "0.1.0",
+  "name": "Interruption / Cancel",
+  "summary": "Cancel side-effectful agent work with immediate acknowledgment, an honest account of what already happened, and no silent continuation after the user says stop.",
+  "status": "draft",
+  "category": "control",
+  "aliases": ["abort", "stop task", "cancel operation", "kill switch"],
+  "tags": ["agency", "side-effects", "long-running", "abort-controller"],
+  "problem": "Agent work runs long and has side effects. A cancel affordance that is missing, slow to acknowledge, or dishonest about what already happened converts user control into theater: clicks appear ignored while the host aborts asynchronously, late tool results overwrite the cancelled state, and completed side effects vanish from view as if the work never ran.",
+  "useWhen": [
+    "Multi-step agent work runs long enough that users need a way out mid-flight",
+    "The work has side effects the user may want to stop before they multiply",
+    "Cancellation maps to a real host mechanism (AbortController, job cancellation) that stops future work"
+  ],
+  "dontUseWhen": [
+    "The work is effectively instantaneous and a cancel control could never be reached in time",
+    "Only the rendering of a text stream needs stopping — streaming-response owns that case",
+    "Cancellation cannot actually stop anything; a fake cancel is worse than none"
+  ],
+  "anatomy": [
+    {
+      "id": "cancel-control",
+      "description": "Visible control, present while work runs, whose accessible name names the work being cancelled.",
+      "required": true
+    },
+    {
+      "id": "cancelling-indicator",
+      "description": "Immediate acknowledgment that cancellation was requested, distinct from the running indicator.",
+      "required": true
+    },
+    {
+      "id": "outcome-summary",
+      "description": "Settled account of the work: what completed before the stop, what was stopped, and whether the work finished before cancellation took effect. Focusable programmatically (tabindex=\"-1\") as the recovery target when the cancel control is removed.",
+      "required": true
+    },
+    {
+      "id": "work-progress",
+      "description": "Progress display for the running work that the cancel control governs.",
+      "required": false
+    }
+  ],
+  "states": [
+    {
+      "id": "running",
+      "description": "Work is executing; the cancel control is available.",
+      "initial": true,
+      "transitionsTo": ["cancel-requested", "completed"]
+    },
+    {
+      "id": "cancel-requested",
+      "description": "The user asked to stop; the host has not yet settled. Acknowledged immediately and never silently exited.",
+      "transitionsTo": ["cancelled", "completed"]
+    },
+    {
+      "id": "cancelled",
+      "description": "The host stopped the work; the outcome summary reports completed and stopped items.",
+      "transitionsTo": ["running"]
+    },
+    {
+      "id": "completed",
+      "description": "The work finished — possibly before a pending cancellation took effect, which is disclosed.",
+      "transitionsTo": ["running"]
+    }
+  ],
+  "constraints": [
+    {
+      "id": "immediate-acknowledgment",
+      "level": "MUST",
+      "category": "state",
+      "statement": "Activating the cancel control MUST move the component to the cancel-requested state within the same interaction, before the host acknowledges the cancellation.",
+      "rationale": "Host-side aborts are asynchronous; a button that visibly does nothing until the abort lands reads as broken and invites rage clicks.",
+      "verification": "Unit test: activating cancel changes the state and the announcement synchronously while the host still reports running work."
+    },
+    {
+      "id": "no-silent-continuation",
+      "level": "MUST_NOT",
+      "category": "state",
+      "statement": "The component MUST NOT re-enter the running state after cancellation is requested; progress arriving while cancellation is pending renders without resetting the state.",
+      "rationale": "Tool results land after the user says stop; letting them flip the UI back to running tells the user their cancellation was ignored.",
+      "verification": "Unit test: progress updates during cancel-requested update the progress display while the state attribute stays cancel-requested."
+    },
+    {
+      "id": "partial-work-honesty",
+      "level": "MUST",
+      "category": "content",
+      "statement": "When cancellation settles, the component MUST report which work completed before the stop and which work was stopped; side effects that occurred are listed, not hidden.",
+      "rationale": "Cancel stops future work — it does not unsend the three emails that already went out. Hiding completed side effects converts an interruption into a lie.",
+      "verification": "Unit test: the cancelled state renders the completed-work and stopped-work lists supplied at settle."
+    },
+    {
+      "id": "completion-race-honest",
+      "level": "MUST",
+      "category": "state",
+      "statement": "If the host reports completion while cancellation is pending, the component MUST settle to completed and disclose that the work finished before cancellation took effect.",
+      "rationale": "Pretending a finished task was cancelled misstates what happened in the world; the user needs to know the side effects are the completed ones.",
+      "verification": "Unit test: cancel, then settle with a completed outcome; the state is completed and the race disclosure is rendered."
+    },
+    {
+      "id": "cancel-not-gated",
+      "level": "MUST_NOT",
+      "category": "interaction",
+      "statement": "The cancel control MUST NOT require a confirmation step; cancelling stops future work rather than destroying existing work.",
+      "rationale": "Confirmation friction belongs on destructive actions. Cancel is the safe action — every second spent in a dialog is another side effect landing.",
+      "verification": "Unit test: a single activation of the cancel control invokes the cancel callback exactly once with no intermediate dialog."
+    },
+    {
+      "id": "cancel-control-accessible",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "The cancel control MUST be keyboard-operable with an accessible name that names the work being cancelled.",
+      "rationale": "A screen reader user hearing 'button, Cancel' in a page of controls cannot tell which running work it governs.",
+      "verification": "Unit test plus axe: the control is a native button whose accessible name includes the work label."
+    },
+    {
+      "id": "cancellation-announced",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "The cancel-requested acknowledgment and the settled outcome MUST be announced through a polite live region.",
+      "rationale": "Without announcements, a screen reader user who activates cancel gets silence followed by a content change they have to discover.",
+      "verification": "Unit test: the live region text changes at cancel-request and again at settle."
+    },
+    {
+      "id": "focus-not-lost",
+      "level": "MUST",
+      "category": "accessibility",
+      "statement": "If the cancel control holds focus when it is removed, focus MUST move to the work region rather than being dropped on the document body.",
+      "rationale": "The cancel control disappears at the moment it is most likely to be focused — the user just pressed it. Browser default drops focus to the body, stranding keyboard users.",
+      "verification": "Unit test: focus the cancel control, request cancellation, and assert focus is on the work region, not the body."
+    },
+    {
+      "id": "escape-cancels",
+      "level": "SHOULD",
+      "category": "interaction",
+      "statement": "Escape SHOULD request cancellation while focus is within the component.",
+      "rationale": "Escape is the universal stop gesture; supporting it keeps this pattern consistent with streaming-response.",
+      "verification": "Unit test: Escape keydown inside the component while running requests cancellation."
+    },
+    {
+      "id": "undo-pairing",
+      "level": "MAY",
+      "category": "resilience",
+      "statement": "Implementations MAY pair the cancelled outcome with an undo or rollback action for side effects that support it.",
+      "rationale": "Where completed side effects are reversible, offering the reversal next to the honest summary is the natural next step.",
+      "verification": "Code review: rollback, if present, is scoped to the listed completed work."
+    }
+  ],
+  "accessibility": {
+    "wcagCriteria": [
+      {
+        "criterion": "2.2.2",
+        "name": "Pause, Stop, Hide",
+        "level": "A",
+        "relevance": "Long-running agent work is a process the user must be able to stop; the cancel control is the mechanism."
+      },
+      {
+        "criterion": "4.1.3",
+        "name": "Status Messages",
+        "level": "AA",
+        "relevance": "The acknowledgment and outcome are status changes that must reach assistive technology without focus moves."
+      },
+      {
+        "criterion": "4.1.2",
+        "name": "Name, Role, Value",
+        "level": "A",
+        "relevance": "The cancel control's name must carry which work it stops."
+      }
+    ],
+    "keyboard": [
+      {
+        "keys": "Tab",
+        "action": "Reaches the cancel control in document order while work runs."
+      },
+      {
+        "keys": "Enter or Space",
+        "action": "Activates the focused cancel control."
+      },
+      {
+        "keys": "Escape",
+        "action": "Requests cancellation while focus is within the component (SHOULD-level)."
+      }
+    ],
+    "screenReader": [
+      {
+        "when": "Cancellation is requested",
+        "behavior": "Polite announcement that cancellation was requested and the work is stopping."
+      },
+      {
+        "when": "The work settles",
+        "behavior": "Polite announcement of the outcome: cancelled, completed, or completed before cancellation took effect."
+      }
+    ],
+    "focusManagement": "Focus never moves while it is outside the component. The single exception: if the cancel control holds focus when it is removed, focus moves to the work region (tabindex=\"-1\") instead of being dropped on the body.",
+    "reducedMotion": "Running and cancelling indicators do not animate under prefers-reduced-motion; state changes render instantly."
+  },
+  "implementations": ["react", "vanilla"],
+  "guidance": {
+    "do": [
+      "Name the work in the cancel control: 'Cancel: drafting 7 emails', not 'Cancel'.",
+      "Wire cancellation to a real abort mechanism (AbortController, job API) before rendering the control.",
+      "Keep the outcome summary in the same place the progress lived, so the eye does not have to hunt for what happened."
+    ],
+    "dont": [
+      "Do not confirm cancellation with a dialog; cancel is the safe action.",
+      "Do not let late tool results re-open the running state after the user said stop.",
+      "Do not report 'Cancelled' when the work actually finished — disclose the race."
+    ]
+  },
+  "relatedPatterns": ["streaming-response", "approval-gate", "generation-control"],
+  "references": [
+    {
+      "title": "WCAG 2.2 Understanding 2.2.2: Pause, Stop, Hide",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html"
+    },
+    {
+      "title": "MDN: AbortController",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/AbortController",
+      "note": "The host-side mechanism this pattern's cancel control should be wired to."
+    }
+  ]
+}
