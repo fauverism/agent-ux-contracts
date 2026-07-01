@@ -128,6 +128,9 @@ The parts that make it feel made by a person. Tone: warm, direct, zero marketing
 
 ## Files Worth Reading
 
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — The system map: the four subsystems on the schema spine, build-time and runtime data flows, the contract-hash linchpin, cross-cutting invariants, testing/CI, deployment, extension seams.
+- **[AGENTS.md](AGENTS.md)** — How to work in this repo: the check gate, contract drift rules, implementation/MCP/site conventions, and the gotchas that have bitten us.
+- **[docs/adr/](docs/adr/)** — Architecture decision records (contract-as-truth, two-pass search, static site, deterministic scaffolding).
 - **[CLAUDE.md](CLAUDE.md)** — Project thesis and scope limits (brief, 1 page).
 - **[patterns/TEMPLATE.md](patterns/TEMPLATE.md)** — Step-by-step authoring procedure (6 steps, checklist gates, 5 pages).
 - **[patterns/streaming-response/](patterns/streaming-response/)** — Gold standard. Read the contract, the React/vanilla impls, the COMPLIANCE docs, the tests. Then use as a template for retrofitting the 7 patterns.

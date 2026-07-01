@@ -83,6 +83,10 @@ body {
   padding-block: 3rem 4rem;
 }
 
+.intro-copy a {
+  color: var(--accent);
+}
+
 /* Footer is a full ruled section, not an afterthought. */
 .shell-footer {
   border-top: 2px solid var(--line-strong);
@@ -127,6 +131,9 @@ body {
   border-top: 1px solid var(--line);
   color: var(--ink-45);
   max-width: var(--measure);
+}
+.footer-colophon a:hover {
+  color: var(--accent);
 }
 
 /* ---- ConstraintBadge ------------------------------------------------------ */

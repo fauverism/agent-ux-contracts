@@ -25,15 +25,30 @@ implementations that trace their compliance constraint-by-constraint.
 ## Structure
 
 ```
-schema/    pattern-contract.schema.json — the contract of contracts (JSON Schema 2020-12)
-patterns/  <id>/pattern.contract.json + doc.mdx + react/ + vanilla/
-scripts/   validate-contracts.mjs — CI gate: schema + cross-file checks
+schema/      pattern-contract.schema.json — the contract of contracts (JSON Schema 2020-12)
+patterns/    <id>/pattern.contract.json + doc.mdx + react/ + vanilla/
+scripts/     validate-contracts.mjs — CI gate: schema + cross-file checks
+mcp-server/  search_patterns + scaffold_pattern tools (stdio MCP)
+site/        static-export field manual generated from the contracts
+docs/adr/    architecture decision records
 ```
 
 Every implementation directory carries a `COMPLIANCE.md` tracing each contract
 constraint to the code that satisfies it. Accessibility is a contract field —
 WCAG criteria, keyboard tables, and screen reader behavior are part of the
 machine-readable spec, not an appendix.
+
+## Documentation
+
+| Doc | What it covers |
+| --- | --- |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | The system map: subsystems, data flows, invariants, the contract-hash linchpin. |
+| [AGENTS.md](AGENTS.md) | How to work in this repo (the check gate, conventions, gotchas) — for agents and the humans steering them. |
+| [docs/adr/](docs/adr/) | Why the load-bearing decisions were made. |
+| [CLAUDE.md](CLAUDE.md) | The brief: thesis and scope. |
+| [PROGRESS.md](PROGRESS.md) | Current status and what's next. |
+| [patterns/TEMPLATE.md](patterns/TEMPLATE.md) | The mechanical procedure to author a pattern. |
+| [mcp-server/DESIGN.md](mcp-server/DESIGN.md) | MCP-internal decisions and amendments. |
 
 ## Validation
 

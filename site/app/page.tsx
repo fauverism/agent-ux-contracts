@@ -14,12 +14,12 @@ export default function Home() {
         <em>Design systems for agents are contracts.</em>
       </h1>
 
-      <p className="mt-8 max-w-[68ch] font-text">
+      <p className="mt-8 max-w-[68ch] font-text intro-copy">
         Every pattern here is a machine-readable contract — RFC-2119
         constraints with tests — plus reference implementations in React and
         vanilla JS, and an MCP server so coding agents can search the catalog
         and scaffold known-compliant code. Humans read the manual; agents read
-        the contracts. Same rules.
+        the contracts. Same rules. <a href="/getting-started/">Getting started</a> will guide you through connecting the server to Claude Code and scaffolding your first pattern. Or, if you just want to dive into the patterns, the index is below.
       </p>
 
       <section id="patterns" aria-labelledby="index-head" className="mt-12">
