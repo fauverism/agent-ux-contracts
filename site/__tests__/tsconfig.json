@@ -1,0 +1,19 @@
+{
+  "comment": "Test-only config. Lives in its own directory because tsx reads the JSX mode from the cwd's tsconfig.json, and the site's root tsconfig is pinned to jsx:preserve for Next. The `test` script runs node from here so this react-jsx config is the one tsx picks up.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "es2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["../*"] }
+  },
+  "include": ["*.test.tsx"]
+}

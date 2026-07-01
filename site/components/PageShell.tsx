@@ -79,7 +79,7 @@ export function PageShell({ children, current, nav }: PageShellProps) {
         </div>
         <p className="footer-colophon">
           A field manual of AI interface patterns, shipped as machine-readable
-          contracts. Set in Stack Sans Notch and Google Sans Code.
+          contracts. Set in <a href="https://fonts.google.com/specimen/DM+Sans" target="_blank" rel="noopener noreferrer">DM Sans</a> and <a href="https://fonts.google.com/specimen/Google+Sans+Code" target="_blank" rel="noopener noreferrer">Google Sans Code</a>.
         </p>
       </footer>
     </div>
