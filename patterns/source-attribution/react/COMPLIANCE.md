@@ -24,3 +24,12 @@ Every MUST/MUST_NOT maps to at least one assertion in
 
 - This is a kit (`CitationAnchor`, `SourceList`, `UncitedPassage`, `consolidateSources`) rather than one container component, because citations weave through host-rendered prose.
 - `uncited-labeled` is satisfied only when hosts actually wrap ungrounded passages; the kit provides the affordance, not enforcement.
+
+## State coverage
+
+- `source-expanded` — not implemented: `SourceList` renders a flat,
+  always-visible bibliography with no per-source disclosure to expand. Hosts
+  that add a disclosure own this state.
+- `broken-link` — intentionally unreachable in the reference: `url` is
+  required, per the pattern's rule that you never cite what you can't link.
+  Hosts that accept linkless sources must design this state themselves.

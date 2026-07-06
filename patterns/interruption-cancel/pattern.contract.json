@@ -1,13 +1,27 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "interruption-cancel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Interruption / Cancel",
   "summary": "Cancel side-effectful agent work with immediate acknowledgment, an honest account of what already happened, and no silent continuation after the user says stop.",
   "status": "draft",
   "category": "control",
-  "aliases": ["abort", "stop task", "cancel operation", "kill switch"],
-  "tags": ["agency", "side-effects", "long-running", "abort-controller"],
+  "aliases": [
+    "abort",
+    "stop task",
+    "cancel operation",
+    "kill switch",
+    "bail out",
+    "stop the agent",
+    "halt agent work"
+  ],
+  "tags": [
+    "agency",
+    "side-effects",
+    "long-running",
+    "abort-controller",
+    "stop"
+  ],
   "problem": "Agent work runs long and has side effects. A cancel affordance that is missing, slow to acknowledge, or dishonest about what already happened converts user control into theater: clicks appear ignored while the host aborts asynchronously, late tool results overwrite the cancelled state, and completed side effects vanish from view as if the work never ran.",
   "useWhen": [
     "Multi-step agent work runs long enough that users need a way out mid-flight",
@@ -46,22 +60,32 @@
       "id": "running",
       "description": "Work is executing; the cancel control is available.",
       "initial": true,
-      "transitionsTo": ["cancel-requested", "completed"]
+      "transitionsTo": [
+        "cancel-requested",
+        "completed"
+      ]
     },
     {
       "id": "cancel-requested",
       "description": "The user asked to stop; the host has not yet settled. Acknowledged immediately and never silently exited.",
-      "transitionsTo": ["cancelled", "completed"]
+      "transitionsTo": [
+        "cancelled",
+        "completed"
+      ]
     },
     {
       "id": "cancelled",
       "description": "The host stopped the work; the outcome summary reports completed and stopped items.",
-      "transitionsTo": ["running"]
+      "transitionsTo": [
+        "running"
+      ]
     },
     {
       "id": "completed",
       "description": "The work finished — possibly before a pending cancellation took effect, which is disclosed.",
-      "transitionsTo": ["running"]
+      "transitionsTo": [
+        "running"
+      ]
     }
   ],
   "constraints": [
@@ -194,7 +218,10 @@
     "focusManagement": "Focus never moves while it is outside the component. The single exception: if the cancel control holds focus when it is removed, focus moves to the work region (tabindex=\"-1\") instead of being dropped on the body.",
     "reducedMotion": "Running and cancelling indicators do not animate under prefers-reduced-motion; state changes render instantly."
   },
-  "implementations": ["react", "vanilla"],
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
   "guidance": {
     "do": [
       "Name the work in the cancel control: 'Cancel: drafting 7 emails', not 'Cancel'.",
@@ -207,7 +234,11 @@
       "Do not report 'Cancelled' when the work actually finished — disclose the race."
     ]
   },
-  "relatedPatterns": ["streaming-response", "approval-gate", "generation-control"],
+  "relatedPatterns": [
+    "streaming-response",
+    "approval-gate",
+    "generation-control"
+  ],
   "references": [
     {
       "title": "WCAG 2.2 Understanding 2.2.2: Pause, Stop, Hide",

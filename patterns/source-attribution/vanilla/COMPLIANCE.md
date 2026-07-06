@@ -21,3 +21,12 @@ Every MUST/MUST_NOT maps to at least one assertion in
 - All DOM built via `createElement`/`textContent` — no `innerHTML` — so source titles and notes cannot inject markup.
 - `createAnchor()` throws on unknown source ids rather than rendering a dead marker; fail loud beats fail wrong — asserted by "createAnchor: throws for unknown sourceId".
 - Index stability across dedup is asserted by "indexOf: returns 1-based position of source in consolidated list".
+
+## State coverage
+
+- `source-expanded` — not implemented: `SourceList` renders a flat,
+  always-visible bibliography with no per-source disclosure to expand. Hosts
+  that add a disclosure own this state.
+- `broken-link` — intentionally unreachable in the reference: `url` is
+  required, per the pattern's rule that you never cite what you can't link.
+  Hosts that accept linkless sources must design this state themselves.

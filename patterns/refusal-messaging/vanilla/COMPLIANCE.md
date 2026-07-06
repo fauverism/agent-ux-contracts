@@ -23,3 +23,11 @@ Every MUST/MUST_NOT maps to at least one assertion in
 
 - Constructor-time throws (missing reason, empty alternatives) are the untyped-host equivalent of the React implementation's tuple type: contract violations fail loudly at the boundary.
 - All text renders via `textContent`; nothing passes through `innerHTML`.
+
+## State coverage
+
+The component is render-only; the contract's states describe the host's view
+of the conversation: `idle` — component not mounted (nothing declined yet);
+`refused` — mounted without fulfilled content (full refusal);
+`partial-refusal` — mounted with `fulfilledText`, delivering the answered
+portion alongside the refusal scoped to the remainder.

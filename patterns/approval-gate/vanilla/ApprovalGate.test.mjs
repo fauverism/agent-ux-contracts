@@ -69,6 +69,14 @@ test('explicit-consent: second approve call while executing is a no-op', async (
   assert.equal(approvals, 1, 'only one approval');
 });
 
+test('accurate-preview: onApprove receives exactly the payload rendered in the detail region', async () => {
+  let executed;
+  const gate = mounted({ onApprove: (payload) => { executed = payload; } });
+  const rendered = host.querySelector('pre.approval-gate__detail').textContent;
+  await gate.approve();
+  assert.equal(executed, rendered, 'executed payload is byte-identical to the previewed one');
+});
+
 test('accurate-preview: payload is in a <pre> element', () => {
   mounted();
   const pre = host.querySelector('pre.approval-gate__detail');

@@ -46,6 +46,8 @@ export const searchResultSchema = z.object({
 
 export const searchOutputSchema = z.object({
   results: z.array(searchResultSchema).max(5),
+  advisory: z.string().optional(),
+  pin_note: z.string().optional(),
   nearest: z
     .object({
       categories: z.array(
@@ -58,6 +60,8 @@ export const searchOutputSchema = z.object({
 
 export const searchOutputShape = {
   results: searchOutputSchema.shape.results,
+  advisory: searchOutputSchema.shape.advisory,
+  pin_note: searchOutputSchema.shape.pin_note,
   nearest: searchOutputSchema.shape.nearest,
 };
 
@@ -76,15 +80,21 @@ export const scaffoldOutputSchema = z.object({
   pattern_id: z.string(),
   version: z.string(),
   contract_hash: z.string().length(64),
+  pin_note: z.string(),
   framework: z.string(),
   options_applied: z.record(z.string(), z.unknown()),
   files: z.array(
     z.object({
       path: z.string(),
-      role: z.enum(['component', 'test', 'compliance']),
+      role: z.enum(['component', 'test', 'compliance', 'support']),
       content: z.string(),
     }),
   ),
+  verify: z
+    .object({ command: z.string(), dependencies: z.array(z.string()) })
+    .optional(),
+  agent_notes: z.string().optional(),
+  usage: z.string().optional(),
   constraints: z.array(z.unknown()),
   compliance_notes: z.array(
     z.object({
@@ -99,9 +109,13 @@ export const scaffoldOutputShape = {
   pattern_id: scaffoldOutputSchema.shape.pattern_id,
   version: scaffoldOutputSchema.shape.version,
   contract_hash: scaffoldOutputSchema.shape.contract_hash,
+  pin_note: scaffoldOutputSchema.shape.pin_note,
   framework: scaffoldOutputSchema.shape.framework,
   options_applied: scaffoldOutputSchema.shape.options_applied,
   files: scaffoldOutputSchema.shape.files,
+  verify: scaffoldOutputSchema.shape.verify,
+  agent_notes: scaffoldOutputSchema.shape.agent_notes,
+  usage: scaffoldOutputSchema.shape.usage,
   constraints: scaffoldOutputSchema.shape.constraints,
   compliance_notes: scaffoldOutputSchema.shape.compliance_notes,
 };

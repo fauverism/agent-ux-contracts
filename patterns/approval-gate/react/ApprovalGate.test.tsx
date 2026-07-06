@@ -62,6 +62,16 @@ test('explicit-consent: approve button click fires onApprove exactly once', asyn
 });
 
 
+test('accurate-preview: onApprove receives exactly the payload rendered in the detail region', async () => {
+  let executed: string | undefined;
+  const { container } = render(
+    <ApprovalGate {...defaultProps} onApprove={(payload) => { executed = payload; }} />,
+  );
+  const rendered = container.querySelector('pre.approval-gate__detail')!.textContent;
+  await act(async () => { fireEvent.click(approveBtn(container)!); });
+  assert.equal(executed, rendered, 'executed payload is byte-identical to the previewed one');
+});
+
 test('accurate-preview: payload is rendered in a <pre> element', () => {
   const { container } = render(<ApprovalGate {...defaultProps} />);
   const pre = container.querySelector('pre.approval-gate__detail');

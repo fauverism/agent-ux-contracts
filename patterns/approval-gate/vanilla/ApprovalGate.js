@@ -21,7 +21,9 @@ export class ApprovalGate {
    * @param {string} options.payload The exact payload that will execute.
    * @param {boolean} [options.irreversible]
    * @param {string} [options.consequence] e.g. "Affects 14 records".
-   * @param {() => void | Promise<void>} options.onApprove
+   * @param {(payload: string) => void | Promise<void>} options.onApprove
+   *   Receives the previewed payload so executing exactly what was shown is
+   *   the default path (constraint: accurate-preview).
    * @param {() => void} [options.onReject]
    */
   constructor(options) {
@@ -136,7 +138,9 @@ export class ApprovalGate {
     if (this.status !== 'proposed') return;
     this.setStatus('executing');
     try {
-      await this.options.onApprove();
+      // The previewed payload is what the approve handler receives
+      // (constraint: accurate-preview).
+      await this.options.onApprove(this.options.payload);
       this.setStatus('completed');
     } catch {
       this.setStatus('failed');

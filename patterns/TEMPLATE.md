@@ -81,6 +81,11 @@ items not implemented go under "Deviations and notes" with the reason —
 honesty over coverage theater. Reference code by anchor (function/element
 names), never line numbers; they rot.
 
+Add a "State coverage" section for any contract state the implementation
+collapses, renames, or leaves to the host — the validator fails a state that
+appears in neither the source nor COMPLIANCE.md. Unmentioned is
+indistinguishable from forgotten.
+
 ## 5. Fill in doc.mdx
 
 Practitioner prose: the failure modes the pattern prevents and the judgment

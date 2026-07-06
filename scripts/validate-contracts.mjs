@@ -7,6 +7,10 @@
  *      - every states[].transitionsTo target must exist in states
  *      - every relatedPatterns / supersededBy id must exist under /patterns/
  *      - every implementations[] entry must have a directory containing COMPLIANCE.md
+ *      - every contract state id must be accounted for in each implementation:
+ *        present in its source, or documented as a deviation in its COMPLIANCE.md
+ *        (drift between a contract's state machine and its reference code must
+ *        fail loudly, not accumulate silently)
  *
  * Exit code 0 = all contracts valid. This is the CI gate.
  */
@@ -100,8 +104,31 @@ for (const dirName of patternIds) {
     const implDir = join(patternsDir, dirName, impl);
     if (!existsSync(implDir)) {
       fail(dirName, `declared implementation "${impl}" has no directory`);
-    } else if (!existsSync(join(implDir, "COMPLIANCE.md"))) {
+      continue;
+    }
+    if (!existsSync(join(implDir, "COMPLIANCE.md"))) {
       fail(dirName, `implementation "${impl}" is missing COMPLIANCE.md`);
+      continue;
+    }
+
+    // State coverage: every contract state must be accounted for — in the
+    // implementation source (tests included; an asserted state counts) or,
+    // when a state is collapsed, renamed, or deliberately unimplemented, in
+    // COMPLIANCE.md. Unmentioned is indistinguishable from forgotten.
+    const implText = readdirSync(implDir)
+      .filter((f) => /\.(tsx|ts|js|mjs|md)$/.test(f))
+      .map((f) => readFileSync(join(implDir, f), "utf8"))
+      .join("\n");
+    const unaccounted = (contract.states ?? [])
+      .map((s) => s.id)
+      .filter((id) => !implText.includes(id));
+    if (unaccounted.length > 0) {
+      fail(
+        dirName,
+        `implementation "${impl}" does not account for state(s) ${unaccounted
+          .map((s) => `"${s}"`)
+          .join(", ")} — implement them or document the deviation in ${impl}/COMPLIANCE.md`,
+      );
     }
   }
 

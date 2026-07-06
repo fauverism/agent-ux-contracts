@@ -47,4 +47,6 @@ export interface Catalog {
   patterns: Map<string, LoadedPattern>;
   invalid: InvalidPattern[];
   patternsDir: string;
+  /** Repo root containing patterns/, schema/, and scripts/. */
+  repoRoot: string;
 }

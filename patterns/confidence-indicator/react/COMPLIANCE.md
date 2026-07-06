@@ -24,3 +24,11 @@ Every MUST maps to at least one assertion in
 ## Deviations and notes
 
 - `refusalReason` and `caveats` are caller-supplied; passing `level="refusal"` without a reason renders the label only. Hosts should always supply the reason (`refusal-explicit` is SHOULD-level).
+
+## State coverage
+
+The contract's states name confidence postures, and the component represents
+them as the `level` value rather than an internal machine: `high-confidence`
+→ `'high'`, `moderate-confidence` → `'moderate'`, `low-confidence` → `'low'`;
+`conditional` and `refusal` are used as-is. Transitions happen by the host
+re-rendering with a new level — the component holds no state of its own.

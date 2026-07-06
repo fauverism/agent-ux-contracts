@@ -234,6 +234,54 @@ Approved design, adjusted where implementation proved a decision wrong:
    hack — and per §5 (our own drift rule) every touched contract got a
    patch bump alongside its new hash.
 
+### UX-review findings (agent-persona audit of the tool flow)
+
+9. **Scaffolds ship their own verify loop.** The generated tests import
+   `@testing-library/react` and need a DOM registered before the runner
+   loads them — previously the receiver had to go find the repo's
+   `scripts/setup-dom.mjs` to run them at all, which broke "verify, don't
+   trust" at its proof moment. `scaffold_pattern` now emits `setup-dom.mjs`
+   (role `support`, the same file the catalog's own suite uses) plus a
+   `verify` object: the exact run command and the dependency list. The
+   tokenBatching behavior test runs against the *shipped* setup file, not
+   the repo's, so the out-of-box loop is what CI exercises.
+10. **Hash pinning is taught in-band, not by convention.** `contract_hash`
+    used to arrive as a bare field whose purpose lived only in the site's
+    Getting Started prose. Both tools now carry a `pin_note` explaining the
+    convention (record version + hash; a changed hash means re-verify), and
+    the generated COMPLIANCE.md is stamped with the version and hash it was
+    generated from — the natural place a later reader looks first.
+11. **Scores are coverage, not coincidence.** Tokens that match nothing in
+    the corpus now stay in the score's denominator at full mass. Before,
+    they were silently dropped, so "kubernetes ingress timeout" scored 0.8
+    on the one word that grazed error-recovery — higher than a correct
+    on-topic query. Alongside: when the top score falls below
+    `LOW_CONFIDENCE` (0.35), the response carries an `advisory` and the
+    category map, because a weak graze presented as an answer is the
+    dangerous failure — the empty state was already honest.
+12. **Cautions earn their provenance.** A caution now fires only when a
+    query token's *best* hit is the exclusion text and that text is a
+    genuine `dontUseWhen` entry. Previously any token overlap qualified —
+    "cancel" grazing "a cancel control could never be reached in time"
+    drew a caution on a perfectly in-scope cancel query, and `guidance.dont`
+    lines were quoted as don't-use-when (wrong provenance). False-positive
+    cautions train agents to skip the field — approval fatigue, the exact
+    failure mode approval-gate's own contract warns about. "actually",
+    "really", "just" joined the filler stopwords (per §7's pattern) after
+    "actually" grazed an exclusion. interruption-cancel gained paraphrase
+    aliases ("bail out", "stop the agent", "halt agent work", tag `stop`)
+    →0.1.1 per the §8 convention: search misses are vocabulary bugs.
+    Regression cases: bail-out, cancel-in-flight, off-topic-graze,
+    no-false-caution (scorecard now 23 cases).
+13. **Content written for agents now reaches agents.** Every doc.mdx has an
+    "Agent notes" section (most-violated constraints, written *to* the
+    consuming agent) and a host-wiring snippet — both previously published
+    only on the human docs site. `scaffold_pattern` now returns
+    `agent_notes` and a framework-matched `usage` snippet (paths rewritten
+    to the flat scaffold layout, componentName rename applied), sourced
+    from the same doc.mdx the site renders. Search stays lean — the wiring
+    matters at scaffold time, not while ranking candidates.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

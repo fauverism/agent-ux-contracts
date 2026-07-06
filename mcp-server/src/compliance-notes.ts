@@ -156,8 +156,8 @@ export const COMPLIANCE_NOTES: Record<string, ComplianceEntry[]> = {
     },
     {
       id: 'accurate-preview',
-      anchor: { react: 'approval-gate__detail', vanilla: 'approval-gate__detail' },
-      note: 'The payload renders verbatim in the detail <pre>; hosts must pass the exact payload that onApprove executes.',
+      anchor: { react: 'onApprove(payload)', vanilla: 'onApprove(this.options.payload)' },
+      note: 'The payload renders verbatim in the detail <pre>, and the approve handler receives that same string — execute the argument you are handed.',
     },
     {
       id: 'no-preselected-approve',
