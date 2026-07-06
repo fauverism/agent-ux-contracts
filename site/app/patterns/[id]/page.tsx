@@ -9,6 +9,7 @@ import { Prose } from '@/components/Prose';
 import { ViewToggle } from '@/components/ViewToggle';
 import { SubscribeBlock } from '@/components/SubscribeBlock';
 import { RevStamp } from '@/components/RevStamp';
+import { PatternDemo, hasDemo } from '@/components/demos';
 import { getPattern, getPatternIds, type Pattern } from '@/lib/patterns';
 import { highlightJson } from '@/lib/highlight';
 import { REPO } from '@/lib/site';
@@ -41,6 +42,13 @@ function HumanView({ pattern }: { pattern: Pattern }) {
   const { contract, doc } = pattern;
   return (
     <div>
+      {hasDemo(contract.id) && (
+        <>
+          <SectionHead>Live demo</SectionHead>
+          <PatternDemo id={contract.id} />
+        </>
+      )}
+
       <Prose>
         <Markdown remarkPlugins={[remarkGfm]}>{doc}</Markdown>
       </Prose>
