@@ -9,6 +9,7 @@ import { Prose } from '@/components/Prose';
 import { ViewToggle } from '@/components/ViewToggle';
 import { SubscribeBlock } from '@/components/SubscribeBlock';
 import { RevStamp } from '@/components/RevStamp';
+import { AdoptSection } from '@/components/AdoptSection';
 import { PatternDemo, hasDemo } from '@/components/demos';
 import { getPattern, getPatternIds, type Pattern } from '@/lib/patterns';
 import { highlightJson } from '@/lib/highlight';
@@ -225,6 +226,9 @@ function HumanView({ pattern }: { pattern: Pattern }) {
           </ul>
         </div>
       </div>
+
+      <SectionHead>Adopt this pattern</SectionHead>
+      <AdoptSection pattern={pattern} />
 
       {contract.references.length > 0 && (
         <>
