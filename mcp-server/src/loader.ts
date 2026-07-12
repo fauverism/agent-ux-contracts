@@ -90,10 +90,12 @@ export class PatternCatalog implements Catalog {
   patterns = new Map<string, LoadedPattern>();
   invalid: InvalidPattern[] = [];
   readonly patternsDir: string;
+  readonly repoRoot: string;
   private readonly validate: Validator;
   private readonly log: (line: string) => void;
 
   constructor(opts: LoaderOptions) {
+    this.repoRoot = opts.repoRoot;
     this.patternsDir = opts.patternsDir ?? join(opts.repoRoot, 'patterns');
     this.validate = buildValidator(
       join(opts.repoRoot, 'schema', 'pattern-contract.schema.json'),

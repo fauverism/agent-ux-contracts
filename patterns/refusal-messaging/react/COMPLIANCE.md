@@ -23,3 +23,11 @@ Every MUST/MUST_NOT maps to at least one assertion in
 
 - The component cannot police the *text* of host-supplied alternatives; a host passing `{ label: "Try again" }` defeats `no-verbatim-retry` at the copy level. That belongs to the same manual review as `no-moralizing`.
 - Render-time throw on empty alternatives is deliberate: a refusal with no forward path is a contract violation, and failing loudly beats degrading silently.
+
+## State coverage
+
+The component is render-only; the contract's states describe the host's view
+of the conversation: `idle` — component not mounted (nothing declined yet);
+`refused` — mounted without fulfilled content (full refusal);
+`partial-refusal` — mounted with `fulfilledContent`, delivering the answered
+portion alongside the refusal scoped to the remainder.

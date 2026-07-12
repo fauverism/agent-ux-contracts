@@ -21,3 +21,11 @@ Every MUST maps to at least one assertion in
 - All DOM is built with `createElement`/`textContent` — no `innerHTML` — so caller-supplied strings cannot inject markup.
 - `update()` re-renders without duplicating nodes (`root.textContent = ''` reset) while the `expanded` flag persists across rebuilds — asserted by "keyboard-expandable: expansion state survives update()" and "update: level change re-renders with the new label".
 - Conditional caveats: "conditional-level: caveats list rendered when level is conditional".
+
+## State coverage
+
+The contract's states name confidence postures, and the component represents
+them as the `level` value rather than an internal machine: `high-confidence`
+→ `'high'`, `moderate-confidence` → `'moderate'`, `low-confidence` → `'low'`;
+`conditional` and `refusal` are used as-is. Transitions happen by the host
+re-rendering with a new level — the component holds no state of its own.

@@ -21,3 +21,9 @@ Every MUST maps to at least one assertion in
 
 - `data-state` walks idle → errored → retrying → errored correctly; the retrying branch is asserted inside "retry-single-flight: retry button has aria-disabled and aria-busy while retrying".
 - `clearFailure()` resets the alert and hides the actions row: "clearFailure: hides actions and clears alert text".
+
+## State coverage
+
+- `recovered` — represented as `failure === null` after a successful retry
+  (the alert clears, the preserved input remains); recovery is the absence of
+  a failure, so no named literal exists in the source.

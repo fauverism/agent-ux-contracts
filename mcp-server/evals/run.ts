@@ -58,6 +58,29 @@ function runCase(c: EvalCase): CaseResult {
             : `${c.expect.id} not in results: ${got}`,
       };
     }
+    case 'no_caution': {
+      const result = outcome.results.find((r) => r.pattern.contract.id === c.expect.id);
+      const pass = Boolean(result) && !result!.caution;
+      return {
+        pass,
+        detail: pass
+          ? `${c.expect.id} returned without caution`
+          : result
+            ? `${c.expect.id} carried an unwanted caution: ${result.caution}`
+            : `${c.expect.id} not in results: ${got}`,
+      };
+    }
+    case 'advisory': {
+      const pass = outcome.results.length > 0 && Boolean(outcome.advisory);
+      return {
+        pass,
+        detail: pass
+          ? 'weak results flagged with low-confidence advisory'
+          : outcome.results.length === 0
+            ? 'expected weak results, got none'
+            : `results returned without advisory (top score ${outcome.results[0].score})`,
+      };
+    }
     case 'fallback': {
       const pass =
         outcome.results.length === 0 &&

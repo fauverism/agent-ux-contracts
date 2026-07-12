@@ -52,6 +52,7 @@ const STOPWORDS = new Set([
   'what', 'when', 'where', 'can', 'should', 'must', 'not', 'into', 'from',
   // Agent-query filler: carries no signal about which pattern is meant.
   'show', 'want', 'wants', 'need', 'needs', 'let', 'make', 'about',
+  'actually', 'really', 'just',
 ]);
 
 function tokenize(query: string): string[] {
@@ -148,10 +149,18 @@ export class LexicalSearchProvider implements SearchProvider {
     // Σ(bestFieldWeight × 1/df) over matched tokens, normalized by the
     // total achievable mass. Matching more of the query in better fields
     // wins; breadth of incidental matches does not.
+    //
+    // Tokens matching nothing in the corpus still count in the denominator
+    // (at full mass, as if df=1): an off-catalog query where one word
+    // grazes one contract must read as low coverage, not high confidence
+    // ("kubernetes ingress timeout" once scored 0.8 on "timeout" alone).
     const weightedTokens = informative.filter((t) => (df.get(t) ?? 0) > 0);
-    const denominator = weightedTokens.reduce((sum, t) => sum + 1 / df.get(t)!, 0);
+    const denominator = informative.reduce(
+      (sum, t) => sum + 1 / Math.max(1, df.get(t) ?? 0),
+      0,
+    );
 
-    if (denominator > 0) {
+    if (weightedTokens.length > 0) {
       const scored: ScoredResult[] = [];
       for (const doc of docs) {
         const hits = weightedTokens
@@ -176,14 +185,20 @@ export class LexicalSearchProvider implements SearchProvider {
             FIELD_PRIORITY.indexOf(a.field) - FIELD_PRIORITY.indexOf(b.field),
         )[0];
 
-        const dontHit = weightedTokens
-          .map((t) => {
-            const value = doc.dontText.find((v) => v.toLowerCase().includes(t));
-            return value === undefined ? undefined : value;
-          })
-          .find((v) => v !== undefined);
+        // Caution only when a token's *best* hit is the exclusion text and
+        // that text is a real dontUseWhen entry. A token that also matches
+        // the pattern's name or aliases is about the pattern, not the
+        // exclusion ("cancel" grazing "a cancel control could never be
+        // reached in time" is not a warning), and guidance.dont lines are
+        // implementation advice, not exclusions — quoting them as
+        // don't-use-when mislabels their provenance.
+        const dontHit = hits.find(
+          (h) =>
+            h.field === 'dontText' &&
+            doc.pattern.contract.dontUseWhen.includes(h.value),
+        );
         const caution = dontHit
-          ? `Your query matches this pattern's don't-use-when: "${excerpt(dontHit)}" — it may explicitly exclude your case.`
+          ? `Your query matches this pattern's don't-use-when: "${excerpt(dontHit.value)}" — it may explicitly exclude your case.`
           : undefined;
 
         scored.push({
@@ -235,7 +250,15 @@ export class LexicalSearchProvider implements SearchProvider {
       ? rationaleFor(top.key ?? '', String(top.value ?? ''))
       : `Fuzzy match on "${doc.name}".`;
 
-    const dontMatch = matches.find((m) => m.key === 'dontText');
+    // Same provenance rule as pass 1: only genuine dontUseWhen entries
+    // warrant a caution, and not when the query also matched the pattern's
+    // identity fields.
+    const dontMatch = matches.find(
+      (m) =>
+        m.key === 'dontText' &&
+        doc.pattern.contract.dontUseWhen.includes(String(m.value ?? '')) &&
+        !matches.some((o) => o.key === 'id' || o.key === 'name' || o.key === 'aliases'),
+    );
     const caution = dontMatch
       ? `Your query matches this pattern's don't-use-when: "${excerpt(String(dontMatch.value ?? ''))}" — it may explicitly exclude your case.`
       : undefined;
@@ -251,11 +274,20 @@ export interface SearchFilters {
 
 export interface SearchOutcome {
   results: ScoredResult[];
+  /** Present when the top score is weak: results may be off-catalog grazes. */
+  advisory?: string;
   nearest?: {
     categories: Array<{ category: string; pattern_ids: string[] }>;
     suggestions: string[];
   };
 }
+
+/**
+ * Below this top score, results covered only a sliver of the query — one
+ * shared word in a ten-pattern corpus looks identical to a genuine match
+ * without this gate ("kubernetes ingress timeout" vs a real cancel query).
+ */
+export const LOW_CONFIDENCE = 0.35;
 
 export function searchPatterns(
   catalog: Catalog,
@@ -273,10 +305,8 @@ export function searchPatterns(
   });
 
   const results = provider.rank(query, corpus).slice(0, 5);
-  if (results.length > 0) return { results };
+  if (results.length > 0 && results[0].score >= LOW_CONFIDENCE) return { results };
 
-  // Empty is never a void (DESIGN.md §6): return the category map plus
-  // lenient near-miss suggestions over ids and names.
   const byCategory = new Map<string, string[]>();
   for (const p of catalog.patterns.values()) {
     const list = byCategory.get(p.contract.category) ?? [];
@@ -287,6 +317,23 @@ export function searchPatterns(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([category, ids]) => ({ category, pattern_ids: ids.sort() }));
 
+  // Weak results are returned, but flagged: a low top score means the query
+  // shared only a sliver of vocabulary with the catalog, and the honest
+  // reading is "possibly off-catalog", not "here's your answer". The
+  // category map rides along so the consumer can reorient.
+  if (results.length > 0) {
+    return {
+      results,
+      advisory:
+        `Low confidence: the best result covered only a small fraction of your query ` +
+        `(score ${Math.round(results[0].score * 100) / 100}). The need may be outside this ` +
+        `catalog — check the category map in nearest before adopting a result.`,
+      nearest: { categories, suggestions: [] },
+    };
+  }
+
+  // Empty is never a void (DESIGN.md §6): return the category map plus
+  // lenient near-miss suggestions over ids and names.
   const lenient = new Fuse(
     [...catalog.patterns.values()].map((p) => ({
       id: p.contract.id,

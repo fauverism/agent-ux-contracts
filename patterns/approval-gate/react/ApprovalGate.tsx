@@ -20,8 +20,12 @@ export interface ApprovalGateProps {
   irreversible?: boolean;
   /** Scope note, e.g. "Affects 14 records". */
   consequence?: string;
-  /** Invoked only by explicit activation of the approve control. */
-  onApprove: () => void | Promise<void>;
+  /**
+   * Invoked only by explicit activation of the approve control. Receives the
+   * previewed payload so executing exactly what was shown is the default
+   * path (constraint: accurate-preview).
+   */
+  onApprove: (payload: string) => void | Promise<void>;
   onReject?: () => void;
 }
 
@@ -51,7 +55,10 @@ export function ApprovalGate({
     setStatus('executing');
     setAnnouncement(GATE_ANNOUNCEMENTS.executing);
     try {
-      await onApprove();
+      // The previewed payload is what the approve handler receives —
+      // preview and execution cannot silently diverge inside the gate
+      // (constraint: accurate-preview).
+      await onApprove(payload);
       setStatus('completed');
       setAnnouncement(GATE_ANNOUNCEMENTS.completed);
     } catch {

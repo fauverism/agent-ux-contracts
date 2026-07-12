@@ -49,9 +49,61 @@ test('response shape: version, hash, constraints array, and roles are present', 
   assert.ok(result.constraints.length > 0, 'full constraints array included');
   assert.deepEqual(
     result.files.map((f) => f.role),
-    ['component', 'test', 'compliance'],
+    ['component', 'test', 'support', 'compliance'],
   );
   assert.deepEqual(result.options_applied, { includeTests: true, includeCompliance: true });
+});
+
+test('verify loop: scaffold ships the DOM bootstrap, a run command, and the dependency list', () => {
+  const result = scaffoldPattern(catalog, 'approval-gate', 'react');
+  const setup = result.files.find((f) => f.role === 'support')!;
+  assert.equal(setup.path, 'setup-dom.mjs');
+  assert.match(setup.content, /global-jsdom\/register/);
+  assert.equal(
+    result.verify?.command,
+    'node --import tsx --import ./setup-dom.mjs --test ApprovalGate.test.tsx',
+  );
+  assert.ok(result.verify!.dependencies.includes('@testing-library/react'));
+
+  const vanilla = scaffoldPattern(catalog, 'approval-gate', 'vanilla');
+  assert.equal(
+    vanilla.verify?.command,
+    'node --import ./setup-dom.mjs --test ApprovalGate.test.mjs',
+  );
+  assert.ok(!vanilla.verify!.dependencies.includes('tsx'), 'vanilla needs no TS loader');
+
+  const noTests = scaffoldPattern(catalog, 'approval-gate', 'react', { includeTests: false });
+  assert.equal(noTests.verify, undefined);
+  assert.ok(!noTests.files.some((f) => f.role === 'support'));
+});
+
+test('agent surface: agent_notes and framework usage snippet reach the scaffold response', () => {
+  for (const [id, pattern] of catalog.patterns) {
+    for (const framework of pattern.contract.implementations) {
+      const result = scaffoldPattern(catalog, id, framework);
+      assert.ok(result.agent_notes, `${id}/${framework}: agent_notes present`);
+      assert.ok(result.usage, `${id}/${framework}: usage snippet present`);
+      assert.ok(
+        !/\.\/(react|vanilla)\//.test(result.usage!),
+        `${id}/${framework}: usage paths rewritten to flat layout`,
+      );
+    }
+  }
+  // Rename applies to the usage snippet too.
+  const renamed = scaffoldPattern(catalog, 'approval-gate', 'react', {
+    componentName: 'ConsentGate',
+  });
+  assert.match(renamed.usage!, /ConsentGate/);
+  assert.ok(!renamed.usage!.includes('ApprovalGate'), 'old name gone from usage');
+});
+
+test('pinning: pin_note present and COMPLIANCE.md header carries version + contract hash', () => {
+  const result = scaffoldPattern(catalog, 'approval-gate', 'react');
+  assert.match(result.pin_note, new RegExp(result.contract_hash));
+  const compliance = result.files.find((f) => f.role === 'compliance')!;
+  const header = compliance.content.split('\n\n')[0];
+  assert.ok(header.includes(`version **${result.version}**`), 'version stamped');
+  assert.ok(header.includes(result.contract_hash), 'hash stamped');
 });
 
 test('compliance_notes: every MUST and MUST_NOT is covered for every pattern and framework', () => {
@@ -264,11 +316,13 @@ test('generated tests pass for the tokenBatching variant (behavior, not just syn
   const dir = join(tmpRoot, 'vanilla-batching');
   const testFile = join(dir, 'StreamingResponse.test.mjs');
   // Run the scaffolded vanilla suite against the transformed component using
-  // the repo's DOM test setup. Batching defers paints during streaming but
-  // settling flushes synchronously, so the reference assertions must hold.
+  // the setup file the scaffold itself ships — the receiver's out-of-box
+  // verify loop, not a repo-local workaround. Batching defers paints during
+  // streaming but settling flushes synchronously, so the reference
+  // assertions must hold. (cwd stays at repoRoot for node_modules resolution.)
   execFileSync(
     process.execPath,
-    ['--import', 'tsx', '--import', './scripts/setup-dom.mjs', '--test', testFile],
+    ['--import', 'tsx', '--import', join(dir, 'setup-dom.mjs'), '--test', testFile],
     { cwd: repoRoot, stdio: 'pipe' },
   );
 });

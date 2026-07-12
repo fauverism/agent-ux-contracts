@@ -7,6 +7,8 @@ export type Expectation =
   | { kind: 'top1'; id: string }
   | { kind: 'topN'; id: string; n: number }
   | { kind: 'caution'; id: string }
+  | { kind: 'no_caution'; id: string }
+  | { kind: 'advisory' }
   | { kind: 'fallback' };
 
 export interface EvalCase {
@@ -103,6 +105,18 @@ export const CASES: EvalCase[] = [
     expect: { kind: 'top1', id: 'approval-gate' },
   },
 
+  // --- paraphrases with no catalog vocabulary (UX-review findings) ---
+  {
+    name: 'bail-out',
+    query: 'user wants to bail out while the agent is still doing things',
+    expect: { kind: 'top1', id: 'interruption-cancel' },
+  },
+  {
+    name: 'cancel-in-flight',
+    query: 'add a cancel button that actually stops the in-flight request',
+    expect: { kind: 'top1', id: 'interruption-cancel' },
+  },
+
   // --- guardrails ---
   {
     name: 'dont-use-caution',
@@ -113,6 +127,21 @@ export const CASES: EvalCase[] = [
     name: 'off-topic-fallback',
     query: 'kubernetes pod autoscaling configuration',
     expect: { kind: 'fallback' },
+  },
+  {
+    name: 'off-topic-graze',
+    // "timeout" grazes error-recovery; the response must say low confidence,
+    // not present the graze as a 0.8-score answer (UX-review finding).
+    query: 'kubernetes ingress timeout misconfiguration',
+    expect: { kind: 'advisory' },
+  },
+  {
+    name: 'no-false-caution',
+    // An in-scope cancel query must not draw the "instantaneous work"
+    // don't-use-when caution just because it contains the word "cancel"
+    // (UX-review finding).
+    query: 'add a cancel button that actually stops the in-flight request',
+    expect: { kind: 'no_caution', id: 'interruption-cancel' },
   },
   {
     name: 'category-filter',

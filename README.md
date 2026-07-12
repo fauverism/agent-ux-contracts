@@ -63,8 +63,10 @@ The schema enforces what schemas can: RFC-2119 keyword/level consistency,
 at least one accessibility constraint and one MUST-level rule per contract,
 exactly one initial state. The validate script covers what they can't:
 id ↔ directory agreement, unique constraint ids, state-transition and
-related-pattern referential integrity, and that every declared implementation
-exists with a compliance report.
+related-pattern referential integrity, that every declared implementation
+exists with a compliance report, and that every contract state is accounted
+for in each implementation — present in the source or documented as an
+explicit deviation in its COMPLIANCE.md.
 
 ## Roadmap
 

@@ -66,7 +66,10 @@ test('e2e: scaffold_pattern returns files, constraints, and compliance_notes', a
     constraints: unknown[];
     compliance_notes: Array<{ constraint_id: string }>;
   };
-  assert.deepEqual(structured.files.map((f) => f.role), ['component', 'test', 'compliance']);
+  assert.deepEqual(
+    structured.files.map((f) => f.role),
+    ['component', 'test', 'support', 'compliance'],
+  );
   assert.ok(structured.constraints.length > 0);
   assert.ok(structured.compliance_notes.length > 0);
 });

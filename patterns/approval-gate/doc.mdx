@@ -30,7 +30,7 @@ import { ApprovalGate } from './react/ApprovalGate';
   summary="Send follow-up email to 3 customers"
   payload={emailDraft}            // the exact content that will send
   irreversible
-  onApprove={() => sendEmails(emailDraft)}
+  onApprove={(payload) => sendEmails(payload)}  // executes what was previewed
   onReject={() => agent.cancel()}
 />
 ```
@@ -43,13 +43,16 @@ new ApprovalGate({
   payload: JSON.stringify(records, null, 2),
   irreversible: true,
   consequence: 'Affects 14 records.',
-  onApprove: () => api.deleteRecords(ids),
+  onApprove: (payload) => api.deleteRecords(JSON.parse(payload)),
 }).mount('#gate');
 ```
 
 ## Agent notes
 
-Pass the executed payload as the preview — not a summary of it. Name the action
-in the approve control's accessible name ("Approve: send 3 emails"). One gate
-per action: bundling unlike actions under one approval converts informed
-consent into a permission slip. Escape rejects; nothing auto-approves, ever.
+Pass the executed payload as the preview — not a summary of it — and execute
+the payload your approve handler receives: it is the exact string that was
+previewed, so ignoring the argument and closing over something else reopens
+the preview/execution gap the gate exists to close. Name the action in the
+approve control's accessible name ("Approve: send 3 emails"). One gate per
+action: bundling unlike actions under one approval converts informed consent
+into a permission slip. Escape rejects; nothing auto-approves, ever.

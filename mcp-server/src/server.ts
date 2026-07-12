@@ -103,6 +103,14 @@ export function createServer(opts: CreateServerOptions): {
         const outcome = searchPatterns(catalog, provider, query, { category, framework });
         const structured = {
           results: outcome.results.map(toSearchResult),
+          ...(outcome.advisory ? { advisory: outcome.advisory } : {}),
+          ...(outcome.results.length > 0
+            ? {
+                pin_note:
+                  'Each result carries version + contract_hash. Record both wherever you adopt ' +
+                  'a pattern; a different hash on a later fetch means the contract changed.',
+              }
+            : {}),
           ...(outcome.nearest ? { nearest: outcome.nearest } : {}),
         };
         return ok(searchOutputSchema.parse(structured));
