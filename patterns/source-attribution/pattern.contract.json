@@ -1,13 +1,24 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "source-attribution",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "Source Attribution",
   "summary": "Link generated content back to its sources—retrieved documents, web pages, citations—so users can verify claims and judge reliability.",
   "status": "draft",
   "category": "transparency",
-  "aliases": ["citations", "provenance", "reference tracking", "source links"],
-  "tags": ["retrieval", "hallucination-guard", "fact-checking", "credibility"],
+  "kind": "kit",
+  "aliases": [
+    "citations",
+    "provenance",
+    "reference tracking",
+    "source links"
+  ],
+  "tags": [
+    "retrieval",
+    "hallucination-guard",
+    "fact-checking",
+    "credibility"
+  ],
   "problem": "Generated responses cite sources or claim knowledge but provide no way for users to verify those sources. Users cannot distinguish between retrieval-grounded facts and hallucinations, and cannot judge the credibility of the source.",
   "useWhen": [
     "The response is grounded in retrieved documents or external data",
@@ -22,23 +33,39 @@
   "anatomy": [
     {
       "id": "citation-anchor",
-      "description": "The text or phrase within the response that is cited; highlighted or numbered.",
-      "required": true
+      "description": "Inline citation marker: a real link rendered as a superscript bracketed number, so keyboard operability and new-tab behaviors come free and the affordance survives grayscale.",
+      "required": true,
+      "export": {
+        "react": "CitationAnchor",
+        "vanilla": "SourceAttribution.createAnchor"
+      }
     },
     {
-      "id": "source-link",
-      "description": "A clickable, keyboard-accessible link to the source document, page, or data.",
-      "required": true
+      "id": "source-list",
+      "description": "Consolidated bibliography rendered from the deduplicated sources, with title, publisher, and date on-page so credibility is judged without leaving.",
+      "required": true,
+      "export": {
+        "react": "SourceList",
+        "vanilla": "SourceAttribution.renderList"
+      }
     },
     {
-      "id": "source-metadata",
-      "description": "Title, author, publication date, and domain of the source; shown on hover or in a modal.",
-      "required": false
+      "id": "uncited-passage",
+      "description": "Wrapper that labels reasoning or generation passages with no retrieval grounding, so they cannot borrow credibility from cited neighbors.",
+      "required": true,
+      "export": {
+        "react": "UncitedPassage",
+        "vanilla": "SourceAttribution.markUncited"
+      }
     },
     {
-      "id": "citation-list",
-      "description": "A consolidated list of all sources at the end of the response for batch inspection.",
-      "required": false
+      "id": "source-consolidation",
+      "description": "The dedupe step both the anchors and the list lean on: same source id, one entry, one index.",
+      "required": true,
+      "export": {
+        "react": "consolidateSources",
+        "vanilla": "consolidateSources"
+      }
     }
   ],
   "states": [
@@ -84,6 +111,14 @@
       "statement": "Citations MUST be visually distinct from surrounding text and communicable via assistive technology; color alone is insufficient.",
       "rationale": "Color-blind and screen reader users must perceive citations and be able to reach them.",
       "verification": "Automated a11y test: citation anchors carry a non-color affordance (marker glyph or superscript number) and an accessible name; axe check passes."
+    },
+    {
+      "id": "consolidated-numbering",
+      "level": "MUST",
+      "category": "content",
+      "statement": "Anchor indices MUST be 1-based positions in the consolidated source list; claims citing the same source MUST share one index and one list entry.",
+      "rationale": "Numbering per occurrence instead of per source — the same report appearing as [1] through [5] — inflates apparent grounding and breaks the anchor-to-entry correspondence users verify by.",
+      "verification": "Unit test: with duplicate source ids, the rendered list has one entry per id and anchor indices resolve to the consolidated position (vanilla derives the index itself; react's consolidateSources is the numbering source of truth)."
     },
     {
       "id": "metadata-available",
@@ -154,7 +189,10 @@
     "focusManagement": "Focus moves naturally through citations in document order; no forced jumps.",
     "reducedMotion": "Expand/collapse animations are disabled; regions appear instantly."
   },
-  "implementations": ["react", "vanilla"],
+  "implementations": [
+    "react",
+    "vanilla"
+  ],
   "guidance": {
     "do": [
       "Use superscript numbers or brackets [1] for citations; they are universally understood.",
@@ -167,7 +205,9 @@
       "Do not cite the same source multiple times for the same claim."
     ]
   },
-  "relatedPatterns": ["streaming-response"],
+  "relatedPatterns": [
+    "streaming-response"
+  ],
   "references": [
     {
       "title": "WCAG 2.2 Understanding 2.1.1: Keyboard",

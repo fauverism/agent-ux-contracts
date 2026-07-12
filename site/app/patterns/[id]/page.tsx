@@ -6,9 +6,11 @@ import { ConstraintBadge } from '@/components/ConstraintBadge';
 import { PatternID } from '@/components/PatternID';
 import { RuleDivider } from '@/components/RuleDivider';
 import { Prose } from '@/components/Prose';
+import { PlainLanguage } from '@/components/PlainLanguage';
 import { ViewToggle } from '@/components/ViewToggle';
 import { SubscribeBlock } from '@/components/SubscribeBlock';
 import { RevStamp } from '@/components/RevStamp';
+import { AdoptSection } from '@/components/AdoptSection';
 import { PatternDemo, hasDemo } from '@/components/demos';
 import { getPattern, getPatternIds, type Pattern } from '@/lib/patterns';
 import { highlightJson } from '@/lib/highlight';
@@ -42,6 +44,8 @@ function HumanView({ pattern }: { pattern: Pattern }) {
   const { contract, doc } = pattern;
   return (
     <div>
+      <PlainLanguage id={contract.id} />
+
       {hasDemo(contract.id) && (
         <>
           <SectionHead>Live demo</SectionHead>
@@ -103,12 +107,15 @@ function HumanView({ pattern }: { pattern: Pattern }) {
         ))}
       </ol>
 
-      <SectionHead>Anatomy</SectionHead>
+      <SectionHead>
+        Anatomy{contract.kind === 'kit' && ' — a kit of cooperating exports'}
+      </SectionHead>
       <Prose>
         <table>
           <thead>
             <tr>
               <th>Part</th>
+              {contract.anatomy.some((p) => p.export) && <th>Export</th>}
               <th>Required</th>
               <th>Description</th>
             </tr>
@@ -117,6 +124,18 @@ function HumanView({ pattern }: { pattern: Pattern }) {
             {contract.anatomy.map((part) => (
               <tr key={part.id}>
                 <td>{part.id}</td>
+                {contract.anatomy.some((p) => p.export) && (
+                  <td>
+                    {part.export
+                      ? Object.entries(part.export).map(([fw, symbol]) => (
+                          <div key={fw}>
+                            <code>{symbol}</code>{' '}
+                            <span className="text-ink-45">({fw})</span>
+                          </div>
+                        ))
+                      : '—'}
+                  </td>
+                )}
                 <td>{part.required ? 'yes' : 'no'}</td>
                 <td>{part.description}</td>
               </tr>
@@ -225,6 +244,9 @@ function HumanView({ pattern }: { pattern: Pattern }) {
           </ul>
         </div>
       </div>
+
+      <SectionHead>Adopt this pattern</SectionHead>
+      <AdoptSection pattern={pattern} />
 
       {contract.references.length > 0 && (
         <>

@@ -335,6 +335,35 @@ export default function GettingStarted() {
         </div>
       ))}
 
+      {/* ---- Other clients / no client ------------------------------------- */}
+      <RuleDivider label="not using claude code?" />
+      <Prose>
+        <h2>Not using Claude Code?</h2>
+        <p>
+          The walkthrough above uses Claude Code because its setup is one
+          command, but nothing here depends on it.
+        </p>
+        <ul>
+          <li>
+            <strong>Any MCP client.</strong> The server speaks standard MCP
+            over stdio. Point Cursor, Windsurf, Zed, a Claude Agent SDK
+            script — anything MCP-capable — at the same{' '}
+            <code>node dist/index.js</code> command from Step 2, using your
+            client&rsquo;s equivalent of the <code>.mcp.json</code> block. The
+            two tools and their responses are identical everywhere.
+          </li>
+          <li>
+            <strong>No agent at all.</strong> The reference implementations
+            are plain files — vendor them. Every pattern page has an
+            &ldquo;Adopt this pattern&rdquo; section with copy-paste commands
+            that take the component, its tests, and its COMPLIANCE.md into
+            your project, and run the contract&rsquo;s own test suite against
+            your copy. Start from any pattern in the{' '}
+            <a href="/">index</a> — no server, no build, no MCP.
+          </li>
+        </ul>
+      </Prose>
+
       {/* ---- Summary ------------------------------------------------------- */}
       <RuleDivider label="recap" />
       <Prose>

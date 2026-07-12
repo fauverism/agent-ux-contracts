@@ -50,6 +50,24 @@ test('citation-distinct: CitationAnchor renders bracketed index, not plain text'
   assert.ok(container.querySelector('sup'), 'superscript element present');
 });
 
+test('consolidated-numbering: with duplicates, list entries and positions follow the consolidated order', () => {
+  const duped: Source[] = [
+    { id: 'a', title: 'Alpha', url: 'https://example.com/a' },
+    { id: 'b', title: 'Beta', url: 'https://example.com/b' },
+    { id: 'a', title: 'Alpha again', url: 'https://example.com/a' },
+  ];
+  const consolidated = consolidateSources(duped);
+  const { container } = render(<SourceList sources={duped} />);
+  const items = [...container.querySelectorAll('li')];
+  assert.equal(items.length, consolidated.length, 'one entry per unique source');
+  // The rendered order IS the consolidated order — an anchor numbered from
+  // consolidateSources() resolves to the matching list entry, so repeated
+  // citations of one source share one index.
+  consolidated.forEach((source, i) => {
+    assert.equal(items[i].id, `source-${source.id}`, `position ${i + 1} matches consolidated order`);
+  });
+});
+
 test('no-citation-spam: consolidateSources removes duplicates, preserving first-seen order', () => {
   const duped: Source[] = [
     { id: 'a', title: 'First A', url: 'https://example.com/a' },

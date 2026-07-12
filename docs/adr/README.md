@@ -19,6 +19,7 @@ MCP-internal. The big picture is in [`../../ARCHITECTURE.md`](../../ARCHITECTURE
 | [0002](0002-two-pass-lexical-search-ranking.md) | Two-pass lexical search ranking | Accepted |
 | [0003](0003-static-site-build-time-contract-reads.md) | Static-export site, contracts read at build time | Accepted |
 | [0004](0004-deterministic-scaffolding.md) | Deterministic scaffolding over reference implementations | Accepted |
+| [0005](0005-kit-patterns-anatomy-per-export.md) | Kit patterns — anatomy per export | Accepted |
 
 ## Writing a new one
 

@@ -125,3 +125,32 @@ test("accepts a stable contract that ships react and vanilla", () => {
   const valid = validate(c);
   assert.equal(valid, true, ajv.errorsText(validate.errors, { separator: "\n" }));
 });
+
+test("rejects a kit contract whose anatomy parts lack export mappings", () => {
+  const c = clone();
+  c.kind = "kit";
+  expectInvalid(c, /anatomy.*must have required property 'export'/);
+});
+
+test("accepts a kit contract when every anatomy part names its exports", () => {
+  const c = clone();
+  c.kind = "kit";
+  for (const part of c.anatomy) {
+    part.export = { react: "StreamingResponse", vanilla: "StreamingResponse" };
+  }
+  const valid = validate(c);
+  assert.equal(valid, true, ajv.errorsText(validate.errors, { separator: "\n" }));
+});
+
+test("rejects an unknown kind", () => {
+  const c = clone();
+  c.kind = "library";
+  expectInvalid(c, /kind must be equal to one of the allowed values/);
+});
+
+test("accepts export mappings on a component contract (optional there)", () => {
+  const c = clone();
+  c.anatomy[0].export = { react: "StreamingResponse" };
+  const valid = validate(c);
+  assert.equal(valid, true, ajv.errorsText(validate.errors, { separator: "\n" }));
+});

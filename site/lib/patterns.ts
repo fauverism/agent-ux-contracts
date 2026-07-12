@@ -22,6 +22,8 @@ export interface AnatomyPart {
   id: string;
   description: string;
   required: boolean;
+  /** Framework → owning code symbol; present on kit patterns. */
+  export?: Record<string, string>;
 }
 
 export interface PatternState {
@@ -46,6 +48,8 @@ export interface PatternContract {
   summary: string;
   status: string;
   category: string;
+  /** "component" (default) or "kit" — multiple cooperating exports. */
+  kind?: string;
   aliases: string[];
   tags: string[];
   problem: string;
