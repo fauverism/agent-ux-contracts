@@ -1,5 +1,6 @@
 import { PageShell } from '@/components/PageShell';
 import { PatternIndexTable } from '@/components/PatternIndexTable';
+import { PlainLanguageIndex } from '@/components/PlainLanguageIndex';
 import { SubscribeBlock } from '@/components/SubscribeBlock';
 import { getAllPatterns } from '@/lib/patterns';
 
@@ -22,6 +23,25 @@ export default function Home() {
         the contracts. Same rules. <a href="/getting-started/">Getting started</a> will guide you through connecting the server to Claude Code and scaffolding your first pattern. Or, if you just want to dive into the patterns, the index is below.
       </p>
 
+      <section aria-labelledby="plain-head" className="mt-12">
+        <h2
+          id="plain-head"
+          className="border-b-2 border-line-strong pb-1 font-mono text-[11px] font-semibold uppercase leading-4 tracking-wider text-ink-70"
+        >
+          What&rsquo;s here, in plain English
+        </h2>
+        <p className="mt-3 max-w-[68ch] font-text intro-copy">
+          No-jargon version: these are {patterns.length} small ideas for
+          making AI feel less like a black box — asking before it acts,
+          saying how sure it is, showing where an answer came from, and never
+          losing your work when something goes wrong. Click any name below
+          for the full explanation.
+        </p>
+        <div className="mt-6">
+          <PlainLanguageIndex patterns={patterns} />
+        </div>
+      </section>
+
       <section id="patterns" aria-labelledby="index-head" className="mt-12">
         <h2
           id="index-head"
@@ -29,6 +49,10 @@ export default function Home() {
         >
           Pattern index — {patterns.length} contracts
         </h2>
+        <p className="mt-3 max-w-[68ch] font-text intro-copy text-ink-70">
+          The technical version of the same list: category, constraint
+          counts, and reference implementations.
+        </p>
         <PatternIndexTable patterns={patterns} />
       </section>
 

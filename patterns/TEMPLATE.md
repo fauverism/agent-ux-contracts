@@ -35,6 +35,18 @@ Resolve every TODO. Rules that the schema cannot fully enforce:
 - At least one `accessibility`-category constraint and one MUST-level
   constraint (schema-enforced).
 - References must be real, resolvable URLs you have actually verified.
+- **Is it a component or a kit?** The default machinery assumes one component
+  with one state machine. If the pattern is several cooperating exports woven
+  through host content (source-attribution is the reference case: inline
+  anchors + a list + a labeling wrapper + a shared helper), declare
+  `"kind": "kit"` and give **every anatomy part an `export` map** naming the
+  code symbol that owns it per framework
+  (`{"react": "CitationAnchor", "vanilla": "SourceAttribution.createAnchor"}`).
+  The validator fails a kit part with no export for a declared framework, and
+  fails any export whose symbol doesn't exist in that implementation. Rules
+  that coordinate the exports (how the anchor's numbering relates to the
+  list's entries) belong in `constraints`, not in Agent notes — a rule that
+  only lives in prose is invisible to the machinery and skippable by humans.
 
 Check: `npm run validate` passes for the contract-level rules.
 

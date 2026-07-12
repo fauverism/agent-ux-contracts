@@ -103,6 +103,22 @@ test('markUncited: marks element with class and data-cited=false', () => {
   assert.match(labelEl.textContent, /Model reasoning/);
 });
 
+test('consolidated-numbering: duplicate citations share one index and one list entry', () => {
+  const duped = [
+    { id: 'a', title: 'Alpha', url: 'https://example.com/a' },
+    { id: 'b', title: 'Beta', url: 'https://example.com/b' },
+    { id: 'a', title: 'Alpha again', url: 'https://example.com/a' },
+  ];
+  const sa = new SourceAttribution({ sources: duped });
+  const first = sa.createAnchor('a');
+  const second = sa.createAnchor('a');
+  assert.equal(first.textContent, '[1]');
+  assert.equal(second.textContent, '[1]', 'repeat citation of the same source shares the index');
+  assert.equal(sa.createAnchor('b').textContent, '[2]');
+  sa.renderList(host);
+  assert.equal(host.querySelectorAll('li').length, 2, 'one entry per unique source');
+});
+
 test('createAnchor: throws for unknown sourceId', () => {
   const sa = new SourceAttribution({ sources: SOURCES });
   assert.throws(() => sa.createAnchor('nonexistent'), /unknown source/);

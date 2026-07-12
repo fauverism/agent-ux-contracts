@@ -11,6 +11,9 @@
  *        present in its source, or documented as a deviation in its COMPLIANCE.md
  *        (drift between a contract's state machine and its reference code must
  *        fail loudly, not accumulate silently)
+ *      - anatomy export maps (mandatory on `kit` patterns) must name a symbol
+ *        for every declared implementation, and each named symbol must exist
+ *        in that implementation's source
  *
  * Exit code 0 = all contracts valid. This is the CI gate.
  */
@@ -129,6 +132,30 @@ for (const dirName of patternIds) {
           .map((s) => `"${s}"`)
           .join(", ")} — implement them or document the deviation in ${impl}/COMPLIANCE.md`,
       );
+    }
+
+    // Anatomy exports (the kit convention): a part that names a code symbol
+    // for this framework must actually have that symbol in the source.
+    // Dotted names ("SourceAttribution.createAnchor") are checked segment
+    // by segment, since the joined form never appears literally.
+    for (const part of contract.anatomy ?? []) {
+      if (!part.export) continue;
+      if (contract.kind === "kit" && !(impl in part.export)) {
+        fail(
+          dirName,
+          `kit anatomy part "${part.id}" has no export mapping for implementation "${impl}"`,
+        );
+        continue;
+      }
+      const symbol = part.export[impl];
+      if (symbol === undefined) continue;
+      const missing = symbol.split(".").filter((seg) => !implText.includes(seg));
+      if (missing.length > 0) {
+        fail(
+          dirName,
+          `anatomy part "${part.id}" maps to export "${symbol}" for "${impl}", but "${missing.join('", "')}" does not appear in that implementation`,
+        );
+      }
     }
   }
 

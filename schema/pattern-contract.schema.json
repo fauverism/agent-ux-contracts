@@ -59,6 +59,10 @@
       "enum": ["input", "output", "control", "transparency", "feedback", "context"],
       "description": "Primary interaction axis: input (intent capture, prompting), output (rendering generated content), control (interrupt, undo, approval), transparency (reasoning, tool use, provenance), feedback (correction, rating, refinement), context (memory, history, state awareness). Use `tags` for secondary facets."
     },
+    "kind": {
+      "enum": ["component", "kit"],
+      "description": "Shape of the reference implementation. `component` (the default when omitted): one component with one state machine. `kit`: multiple cooperating exports woven through host content (e.g. inline anchors + a list + a helper); every anatomy part of a kit must name the export that owns it, per framework."
+    },
     "aliases": {
       "type": "array",
       "items": { "type": "string", "minLength": 2 },
@@ -196,12 +200,36 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": { "kind": { "const": "kit" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "anatomy": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "export": { "$ref": "#/$defs/exportMap" } },
+              "required": ["export"]
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
     "slug": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "exportMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "description": "Framework → code symbol that owns this anatomy part (e.g. {\"react\": \"CitationAnchor\", \"vanilla\": \"SourceAttribution.createAnchor\"}). Mandatory on every part of a `kit` pattern; CI checks each named symbol exists in that framework's implementation."
     },
     "anatomyPart": {
       "type": "object",
@@ -217,7 +245,8 @@
         "required": {
           "type": "boolean",
           "description": "Whether an implementation must render this part to claim compliance."
-        }
+        },
+        "export": { "$ref": "#/$defs/exportMap" }
       }
     },
     "state": {

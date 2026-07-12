@@ -111,6 +111,11 @@ export const COMPLIANCE_NOTES: Record<string, ComplianceEntry[]> = {
       note: 'Citation markers are real <a href> links — focusable, Tab-reachable, Enter-activatable.',
     },
     {
+      id: 'consolidated-numbering',
+      anchor: { react: 'consolidateSources(sources)', vanilla: 'this.indexOf(sourceId)' },
+      note: 'Indices derive from the consolidated list: react renders the list from consolidateSources; vanilla computes every anchor index from it, so repeat citations share one index and one entry.',
+    },
+    {
       id: 'source-verifiable',
       anchor: { react: 'source.url', vanilla: 'link.href = source.url' },
       note: 'Anchors and list entries link directly to the source URL; the component never masks or rewrites targets.',
