@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agent-ux-contracts": {
+      "command": "node",
+      "args": ["--import", "tsx", "mcp-server/src/index.ts"],
+      "env": { "MCP_DEV": "1" }
+    }
+  }
+}

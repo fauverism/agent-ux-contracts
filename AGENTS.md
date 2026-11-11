@@ -4,6 +4,8 @@ Working instructions for coding agents (and the humans steering them) in this
 repo. This is the **how to work here** doc. Its companions:
 
 - [`CLAUDE.md`](CLAUDE.md) — what we're building and the scope (the brief).
+- [`docs/NORTH-STAR.md`](docs/NORTH-STAR.md) — who it is for, what blocks launch, how to choose work.
+- [`docs/CLAUDE-PLAYBOOK.md`](docs/CLAUDE-PLAYBOOK.md) — the Claude skills, subagent, hook, and automations for this repo.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the system is structured.
 - [`docs/adr/`](docs/adr/) — why the load-bearing decisions were made.
 - [`patterns/TEMPLATE.md`](patterns/TEMPLATE.md) — the mechanical procedure to author a pattern.
@@ -38,21 +40,24 @@ npm run check
 This is one all-or-nothing gate:
 
 ```
-npm test                       # 242 catalog tests (schema mutation + react + vanilla, axe in states)
-&& npm run validate            # 10 contracts: ajv schema + cross-file integrity
+npm test                       # catalog tests (schema mutation + react + vanilla, axe in states)
+&& npm run validate            # every contract: ajv schema + cross-file integrity
 && npm run typecheck           # tsc strict
-&& npm --prefix mcp-server run check   # 32 MCP tests + 19/19 search evals + typecheck
+&& npm --prefix mcp-server run check   # MCP tests + search evals (must be 100%) + typecheck
 && npm --prefix site run typecheck     # site strict typecheck
 ```
 
-Everything must be green. The MCP check **compiles the generated React and runs
+Everything must be green. CI runs the same gate plus the site tests and the
+static build on every pull request (`.github/workflows/check.yml`). Counts are
+left out of this file on purpose; the commands print them. The MCP check **compiles the generated React and runs
 generated tests**, and the eval harness is part of it — so "the scaffold works"
 and "search still ranks correctly" are enforced, not assumed.
 
 Useful narrower commands:
 
 ```bash
-npm test -- patterns/streaming-response/react/StreamingResponse.test.tsx  # one test file (glob)
+node --import tsx --import ./scripts/setup-dom.mjs --test "patterns/streaming-response/**/*.test.*"  # one pattern
+                                         # (npm test -- <glob> adds to the full run; it does not narrow it)
 npm run validate                         # contracts only
 npm --prefix mcp-server run eval         # search scorecard only
 npm run new-pattern -- <id> [Display Name]   # scaffold a new pattern skeleton
@@ -126,7 +131,7 @@ if behavior moved, and update the impls' trace headers.
 - **Errors are in-band structured data**, not thrown protocol errors:
   `{ code, message, next_action, ...context }`.
 - **The search eval is a gate.** If you touch ranking or vocabulary, keep
-  `mcp-server/evals` at 19/19. Add real misses to `evals/cases.ts`.
+  `mcp-server/evals` at 100%. Add real misses to `evals/cases.ts`.
 - Record non-trivial decisions as **amendments in `DESIGN.md`** (decision /
   alternative / why) — the owner reviews design docs before implementation.
 - The contract hash lives in `mcp-server/src/hash.ts`. It is **duplicated** in
@@ -168,10 +173,9 @@ if behavior moved, and update the impls' trace headers.
 - **Substring search has no stemmer.** "failed" doesn't match "failure". v1
   closes these gaps with contract `aliases` (which double as documentation), not
   a stemmer. Add the alias.
-- **The repo currently has only the initial commit.** Things that read git
-  history degrade gracefully but stay empty until you commit — notably the RSS
-  feed's per-item `pubDate` (`site/app/feed.xml/route.ts`). Commit the work to
-  populate dates.
+- **The RSS feed reads per-item `pubDate` from git history**
+  (`site/app/feed.xml/route.ts`) and omits dates it cannot find. A shallow
+  clone builds a feed with missing dates; build from a full clone.
 - **`scaffold` options must never strip MUST-implementing code.** If you add an
   option, prove it only varies inessentials (see ADR-0004).
 
