@@ -26,6 +26,12 @@ next three tasks. It changes nothing. Then, if the docs look off:
 /drift-check
 ```
 
+And to see whether the product still works for the people it is for:
+
+```
+/run-journey all
+```
+
 ## 2. What is set up in this repo
 
 Everything in this table is committed, so it works in the terminal, the
@@ -36,12 +42,14 @@ desktop app, the IDE extensions, and cloud sessions alike.
 | Project instructions | [`CLAUDE.md`](../CLAUDE.md), which imports [`AGENTS.md`](../AGENTS.md) | Loaded at the start of every session |
 | `/catch-up` | `.claude/skills/catch-up/` | You type it, or Claude loads it when you ask "where was I" |
 | `/drift-check [fix]` | `.claude/skills/drift-check/` | You type it, or Claude loads it when you ask whether docs are accurate |
+| `/run-journey <id\|all> [plan]` | `.claude/skills/run-journey/` | You type it, or Claude loads it when you ask to test a use case. Plays the persona in a scratch project and reports friction; `plan` lays out the work for a journey's gaps without building |
+| Journeys | [`docs/journeys/`](journeys/README.md) | The product's use cases as files any AI tool can run. Validated by `npm run validate` |
 | `/new-pattern <id> [Name]` | `.claude/skills/new-pattern/` | Only when you type it. Stops for contract review before writing code |
 | `/ship [summary]` | `.claude/skills/ship/` | Only when you type it. Gate, version-bump check, `PROGRESS.md` entry, commit message |
 | `contract-auditor` subagent | `.claude/agents/contract-auditor.md` | Claude delegates after pattern changes, or you say "use the contract-auditor on approval-gate" |
 | Contract validation hook | `.claude/hooks/validate-contract.mjs` | **Not wired yet.** See section 3 |
 | The catalog's own MCP server | [`.mcp.json`](../.mcp.json) | Claude Code asks once to approve it, then `search_patterns` and `scaffold_pattern` are available in sessions here. Needs `npm ci` in the root and in `mcp-server/` |
-| CI gate | `.github/workflows/check.yml` | Every pull request and every push to `main`: `npm run check`, site tests, static build. No secrets, no model calls |
+| CI gate | `.github/workflows/check.yml` | Every pull request and every push to `main`: `npm run check` (which validates contracts and journeys), site tests, static build. No secrets, no model calls |
 
 Why these and not more: each one replaces something that was being done by
 hand or not at all. A skill that would only restate `AGENTS.md` is not here.
@@ -123,7 +131,9 @@ Useful ones here, with the prompt to paste:
 | Cadence | Prompt |
 | --- | --- |
 | Weekly | `Run /drift-check. If every check is OK, stop and say so in one line. If there is drift, run /drift-check fix, open a pull request with the corrections, and list anything you could not fix.` |
+| Weekly | `Run /run-journey all. Compare each verdict with the journey's recorded baseline. If nothing changed, say so in one line. If a verdict changed or a run found something new, write the report to docs/journeys/runs/ with today's date, update the baselines, and open a pull request.` |
 | Monthly | `Check for outdated dependencies in the root, mcp-server/, and site/. Apply patch and minor updates only, run npm run check and npm --prefix site run build, and open a pull request if both pass. Report major updates without applying them.` |
+| Quarterly | `Re-verify docs/research/landscape.md: open each linked page, correct any row that no longer matches, add notable newcomers, update the date, and open a pull request. Do not change the journeys.` |
 | On pull request opened | `Run the contract-auditor subagent on every pattern directory this pull request touches and post the report as one comment.` |
 
 This is the piece that would have kept the docs honest over the last four
@@ -191,6 +201,19 @@ to "find a pattern for letting the user stop a long agent task" and it will
 call `search_patterns` on the real catalog. Every query that returns the
 wrong pattern is a case for `mcp-server/evals/cases.ts`. That is the
 cheapest source of the real-usage signal NORTH-STAR lists as missing.
+
+**Journeys are the spec for new work.** Before building a feature, write it
+as a journey file: persona, trigger, steps, checks. Mark the steps that do
+not exist yet as unavailable and run `/run-journey <id> plan`. The plan that
+comes back is scoped to what a real person needs, and the journey becomes the
+acceptance test when the work is done. The files import into any AI tool; see
+[`journeys/README.md`](journeys/README.md).
+
+**Let the product test itself.** The cheapest way to find defects here is to
+use the catalog the way a stranger would. The first journey runs found
+several in one session; see
+[`journeys/runs/2026-11-11-baseline.md`](journeys/runs/2026-11-11-baseline.md).
+A scheduled `/run-journey all` keeps doing that.
 
 **Plan first on anything touching a contract.** `claude --permission-mode
 plan` (or the mode picker) makes Claude explore and propose without editing.

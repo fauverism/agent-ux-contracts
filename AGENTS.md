@@ -6,6 +6,7 @@ repo. This is the **how to work here** doc. Its companions:
 - [`CLAUDE.md`](CLAUDE.md) — what we're building and the scope (the brief).
 - [`docs/NORTH-STAR.md`](docs/NORTH-STAR.md) — who it is for, what blocks launch, how to choose work.
 - [`docs/CLAUDE-PLAYBOOK.md`](docs/CLAUDE-PLAYBOOK.md) — the Claude skills, subagent, hook, and automations for this repo.
+- [`docs/journeys/`](docs/journeys/README.md) — the product's use cases as runnable journey files, and the gaps each one hits.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the system is structured.
 - [`docs/adr/`](docs/adr/) — why the load-bearing decisions were made.
 - [`patterns/TEMPLATE.md`](patterns/TEMPLATE.md) — the mechanical procedure to author a pattern.
@@ -27,6 +28,8 @@ Corollaries:
 - Every MUST has a named test, mapped in `COMPLIANCE.md`. No silent gaps.
 - Search misses are **vocabulary** bugs: fix them by adding `aliases`/`tags` to
   the contract + a patch bump, not by hacking ranking.
+- If you rename or remove a constraint id, `npm run validate` will name the
+  journeys in `docs/journeys/` that cite it. Update them in the same change.
 - Accessibility is a contract field and a tested behavior, not a finishing pass.
 
 ---
@@ -41,7 +44,7 @@ This is one all-or-nothing gate:
 
 ```
 npm test                       # catalog tests (schema mutation + react + vanilla, axe in states)
-&& npm run validate            # every contract: ajv schema + cross-file integrity
+&& npm run validate            # every contract and every journey: ajv schema + cross-file integrity
 && npm run typecheck           # tsc strict
 && npm --prefix mcp-server run check   # MCP tests + search evals (must be 100%) + typecheck
 && npm --prefix site run typecheck     # site strict typecheck
@@ -58,7 +61,8 @@ Useful narrower commands:
 ```bash
 node --import tsx --import ./scripts/setup-dom.mjs --test "patterns/streaming-response/**/*.test.*"  # one pattern
                                          # (npm test -- <glob> adds to the full run; it does not narrow it)
-npm run validate                         # contracts only
+npm run validate                         # contracts and journeys only
+node scripts/validate-journeys.mjs --gaps # cross-journey gap index, most-blocking first
 npm --prefix mcp-server run eval         # search scorecard only
 npm run new-pattern -- <id> [Display Name]   # scaffold a new pattern skeleton
 npm --prefix site run dev                # site dev server (see the gotcha below)
@@ -72,10 +76,12 @@ npm --prefix site run build              # static export → site/out
 ```
 schema/      pattern-contract.schema.json — the contract of contracts
 patterns/    <id>/ : pattern.contract.json + doc.mdx + react/ + vanilla/ + COMPLIANCE.md
-scripts/     validate-contracts.mjs (CI gate), new-pattern.mjs, setup-dom.mjs
+scripts/     validate-contracts.mjs + validate-journeys.mjs (CI gate), new-pattern.mjs, setup-dom.mjs
 mcp-server/  TypeScript MCP server (stdio): search + scaffold tools; evals/; DESIGN.md
 site/        Next.js static-export field manual: app/ components/ lib/ styles/
 docs/adr/    architecture decision records
+docs/journeys/  use cases as runnable journey files + RUNNER.md + dated run reports
+docs/research/  dated landscape survey the journeys cite
 ```
 
 Full detail in [ARCHITECTURE.md](ARCHITECTURE.md).

@@ -50,9 +50,17 @@ Run all of them. Report each as OK, DRIFT, or NOT CHECKED with the reason.
 11. **Claude tooling** — every skill, subagent, hook script, and workflow
     named in `docs/CLAUDE-PLAYBOOK.md` exists, and every one that exists
     under `.claude/` is named there.
+12. **Journeys** — the tables in `docs/journeys/README.md` list exactly the
+    `*.journey.json` files, each under the heading matching its `status`.
+    For each gap whose evidence is a file or a command, re-check it: a gap
+    that no longer reproduces is drift, reported with the journey to update.
+    Never change a journey's `status` or `baseline` here; that takes a run.
+13. **Landscape age** — the verification date in
+    `docs/research/landscape.md`. Older than three months is drift to
+    report, not to fix.
 
 ## Report
 
-A table of the eleven checks with status and a one-line finding, then the
+A table of the checks with status and a one-line finding, then the
 DRIFT items in detail: file and line, what it says, what is true, and the
 proposed correction. End with what you changed, if anything.

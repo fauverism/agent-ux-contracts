@@ -1,0 +1,143 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "know-when-not-to",
+  "revised": "2026-11-11",
+  "title": "Know when not to: the catalog argues against itself",
+  "summary": "An agent asks for a pattern in a situation the pattern's own contract excludes, or for something the catalog does not cover. The catalog says so at the moment of generation, and the agent recommends against building it.",
+  "status": "partial",
+  "persona": {
+    "role": "Engineer whose agent reaches for a pattern by reflex",
+    "context": "Building a drafts screen. Wants a confirmation step on an action the user can undo in one click. An approval gate there would be friction with no safety benefit.",
+    "goal": "To be told, before any code is written, that the pattern does not fit and why."
+  },
+  "trigger": "They ask the agent: \"Add a confirmation before the agent renames a draft.\"",
+  "advantage": {
+    "claim": "The only catalog found that talks an agent out of a pattern at generation time.",
+    "versus": ["ai-ux-playground", "shape-of-ai", "ai-elements", "shadcn-registry"],
+    "why_it_holds": "Each contract carries dontUseWhen, and search_patterns returns a caution quoting the matching exclusion plus a low-confidence advisory with a category map when nothing fits. The pattern galleries reviewed document when-not-to as prose for human readers; the component registries have no such concept."
+  },
+  "contracts": [
+    { "pattern": "approval-gate", "constraints": ["explicit-consent"] },
+    { "pattern": "streaming-response", "constraints": [] },
+    { "pattern": "interruption-cancel", "constraints": [] }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog)."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Search with a paraphrase of the excluded situation, the way a person would say it.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "confirm before a low-risk reversible action" }
+      },
+      "expect": "approval-gate is returned with a caution quoting its exclusion for trivially reversible, low-stakes actions. No other result carries a caution.",
+      "available": true,
+      "gap": "caution-misses-paraphrase"
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Search again using wording close to the contract's own exclusion text.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "gate a trivially reversible low-stakes action" }
+      },
+      "expect": "approval-gate ranks first and carries the caution.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Search for a second excluded situation: gating an operation that has no side effects.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "ask permission before a read-only operation" }
+      },
+      "expect": "approval-gate ranks first and carries a caution quoting its read-only exclusion.",
+      "available": true,
+      "gap": "substring-matching-noise"
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Search for something the catalog does not cover.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "voice input waveform" }
+      },
+      "expect": "A low-confidence advisory and the nearest category map, so the agent can see the need is outside the catalog.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Tell the persona what to do, using only the four responses.",
+      "uses": { "kind": "judgment" },
+      "expect": "The agent recommends against an approval gate for the rename, quotes the exclusion, and says plainly that no pattern covers voice input. It scaffolds nothing.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "A paraphrased exclusion still draws the caution.",
+      "check": "In the s1 response, the approval-gate result has a caution field."
+    },
+    {
+      "id": "c2",
+      "criterion": "A caution never fires because of a shared substring or a generic word.",
+      "check": "In the s1 response, no result other than approval-gate has a caution. In particular streaming-response must not, since its exclusion is about irreversible actions and the query says reversible."
+    },
+    {
+      "id": "c3",
+      "criterion": "The pattern being asked about ranks first even when the query describes its exclusion.",
+      "check": "In the s3 response, results[0].id is approval-gate."
+    },
+    {
+      "id": "c4",
+      "criterion": "Wording close to the contract draws the caution.",
+      "check": "In the s2 response, results[0].id is approval-gate and it has a caution field."
+    },
+    {
+      "id": "c5",
+      "criterion": "An off-catalog query is answered honestly.",
+      "check": "The s4 response has an advisory field and a nearest.categories map."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "caution-misses-paraphrase",
+      "summary": "The caution is suppressed when the query's words score better against a pattern's other fields than against its exclusion text.",
+      "evidence": "Baseline run: \"confirm before a low-risk reversible action\" returns approval-gate first with no caution, although its first dontUseWhen entry is \"The action is trivially reversible and low-stakes\". The logic is in mcp-server/src/search.ts (caution only when a token's best hit is the exclusion text).",
+      "fix": "Add this query to mcp-server/evals/cases.ts as a caution case, then revisit the suppression rule under a DESIGN.md amendment. Contract aliases for the exclusion vocabulary (low-risk, undoable) may be enough.",
+      "scope": "in-scope",
+      "size": "M"
+    },
+    {
+      "id": "substring-matching-noise",
+      "summary": "Substring matching produces false cautions and a wrong top result.",
+      "evidence": "Baseline run: \"reversible\" matches \"irreversible\" and puts a caution on streaming-response; \"ask permission before a read-only operation\" ranks interruption-cancel first on the alias \"stop task\", where \"ask\" is a substring of \"task\".",
+      "fix": "Match on token boundaries for cautions and alias hits, and add both queries to the evals as no_caution and top-result cases.",
+      "scope": "in-scope",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "none",
+    "schedule": "After any change to mcp-server/src/search.ts or to a contract's dontUseWhen, aliases, or tags.",
+    "notes": "Four tool calls and no workspace. The cheapest journey to run and the one that guards the most distinctive behavior."
+  },
+  "baseline": {
+    "result": "fail",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

@@ -44,7 +44,11 @@ imported here so every Claude session loads it:
   decisions, and the rules for choosing what to work on. Read it before
   proposing new work. Ask about anything listed there as an open decision.
 - `docs/CLAUDE-PLAYBOOK.md` lists the project skills (`/catch-up`,
-  `/drift-check`, `/new-pattern`, `/ship`), the `contract-auditor` subagent,
-  and the automations around this repo.
+  `/drift-check`, `/run-journey`, `/new-pattern`, `/ship`), the
+  `contract-auditor` subagent, and the automations around this repo.
+- `docs/journeys/` holds the product's use cases as runnable journey files.
+  A feature idea is not ready to build until it is a journey with a persona,
+  steps, and checks. `node scripts/validate-journeys.mjs --gaps` lists what
+  blocks them.
 - Do not put test counts or other volatile numbers in standing docs. Link to
   the command that prints them.

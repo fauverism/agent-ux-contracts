@@ -1,0 +1,130 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "house-rules-private-catalog",
+  "revised": "2026-11-11",
+  "title": "House rules: a private catalog in the same format",
+  "summary": "A team writes contracts for the patterns only they need, such as a PII redaction notice or a data-residency banner, in the same schema, and serves them to their agents through the same MCP server beside the public catalog.",
+  "status": "partial",
+  "persona": {
+    "role": "UX engineer at a regulated company",
+    "context": "Their AI features need patterns no public catalog will ever carry. Today those rules live in a wiki their coding agents never read.",
+    "goal": "Their own rules, written once in a format agents consume, enforced the same way as the public patterns."
+  },
+  "trigger": "They decide the redaction notice has been built wrong for the third time and tell the agent: \"Write this down as a contract so it stops happening.\"",
+  "advantage": {
+    "claim": "The schema is the product. The ten public patterns are the sample data.",
+    "versus": ["storybook-mcp", "spec-driven-dev", "hax-toolkit"],
+    "why_it_holds": "The contract format, its validator, and the server are independent of which patterns they hold: the server already takes its root directory from an environment variable. A Storybook manifest is derived from code that exists, so it cannot state a rule the code does not yet follow; spec-driven workflows write rules as per-project prose."
+  },
+  "preconditions": [
+    "A scratch directory to act as the private catalog root, containing a copy of schema/pattern-contract.schema.json and an empty patterns/ directory.",
+    "A way to run the catalog's MCP server with the environment variable AGENT_UX_CONTRACTS_ROOT set to that directory. In Claude Code: `claude mcp add house-rules -e AGENT_UX_CONTRACTS_ROOT=<private root> -- node --import tsx <catalog>/mcp-server/src/index.ts`."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Read the authoring procedure.",
+      "uses": { "kind": "read", "target": "patterns/TEMPLATE.md", "where": "repo" },
+      "expect": "The steps for writing a contract: atomic, testable constraints with stable ids, RFC 2119 levels, at least one accessibility MUST.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Write the private contract.",
+      "uses": {
+        "kind": "edit",
+        "target": "patterns/pii-redaction-notice/pattern.contract.json",
+        "where": "workspace",
+        "change": "A contract for a notice that tells the user personal data was removed from their prompt before it reached the model, and what was removed. Aliases and tags in the words the team uses, for example redaction notice and pii masking."
+      },
+      "expect": "A contract file in the private root.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Validate the private contract with the catalog's validator.",
+      "uses": { "kind": "command", "run": "node <catalog>/scripts/validate-contracts.mjs --root <private root>" },
+      "expect": "The same schema and cross-file checks the public catalog passes, applied to the private root.",
+      "available": false,
+      "gap": "validator-hard-wired"
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Search the private catalog in product language.",
+      "uses": {
+        "kind": "external",
+        "name": "The catalog MCP server started with AGENT_UX_CONTRACTS_ROOT set to the private root; call search_patterns with the query \"tell the user personal data was masked\""
+      },
+      "expect": "pii-redaction-notice is returned with its MUST statements, version, and hash.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Scaffold the private pattern.",
+      "uses": {
+        "kind": "external",
+        "name": "The same private-root server; call scaffold_pattern for pii-redaction-notice"
+      },
+      "expect": "Files, constraints, and compliance_notes for the private pattern, the same as for a public one.",
+      "available": false,
+      "gap": "scaffold-notes-compiled-in"
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "A private contract is held to the same standard as a public one.",
+      "check": "s3 validates the private root and exits 0."
+    },
+    {
+      "id": "c2",
+      "criterion": "Agents find the private pattern in the team's own words.",
+      "check": "The s4 response includes pii-redaction-notice."
+    },
+    {
+      "id": "c3",
+      "criterion": "A private pattern scaffolds with compliance notes.",
+      "check": "The s5 response has files and a compliance_notes entry for every MUST-level constraint."
+    },
+    {
+      "id": "c4",
+      "criterion": "The public catalog is untouched.",
+      "check": "Nothing under the catalog repository's patterns/ or mcp-server/ directories was created or changed."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "scaffold-notes-compiled-in",
+      "summary": "scaffold_pattern only works for patterns the server was compiled with. The MUST-to-anchor mapping lives in the server's source, keyed by pattern id.",
+      "evidence": "Baseline probe: scaffolding a private pattern returns the plain text \"compliance-notes table is missing pii-redaction-notice/reason-given\", not a structured error. The table is COMPLIANCE_NOTES in mcp-server/src/compliance-notes.ts. A private root also needs its own copy of scripts/setup-dom.mjs or the call fails with a raw ENOENT.",
+      "fix": "Move each pattern's anchors and scaffold options into its own directory so the server is catalog-agnostic, and return these failures as in-band structured errors.",
+      "scope": "owner-decision",
+      "decision": "scope",
+      "size": "L"
+    },
+    {
+      "id": "validator-hard-wired",
+      "summary": "The contract validator and the new-pattern script only operate on this repository's own patterns directory.",
+      "evidence": "scripts/validate-contracts.mjs derives its root from its own file location and reads no argument or environment variable.",
+      "fix": "Accept a root directory, defaulting to the current behavior.",
+      "scope": "in-scope",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "partial",
+    "workspace": "scratch",
+    "schedule": "On demand. Re-run when the server's loader or scaffold code changes.",
+    "notes": "Supporting private catalogs is a product decision, not a bug fix. The baseline shows how close it already is: search works unmodified."
+  },
+  "baseline": {
+    "result": "blocked",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

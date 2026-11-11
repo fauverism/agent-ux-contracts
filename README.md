@@ -48,6 +48,8 @@ machine-readable spec, not an appendix.
 | [CLAUDE.md](CLAUDE.md) | The brief: thesis and scope. |
 | [docs/NORTH-STAR.md](docs/NORTH-STAR.md) | Intent: who it is for, what blocks launch, how to choose work. Start here after time away. |
 | [docs/CLAUDE-PLAYBOOK.md](docs/CLAUDE-PLAYBOOK.md) | Working on this repo with Claude: skills, subagent, hook, CI, automations. |
+| [docs/journeys/](docs/journeys/README.md) | What people can do with the catalog, as journey files an agent can run, with the gaps each one hits. |
+| [docs/research/landscape.md](docs/research/landscape.md) | Who else is near this, and where this wins. A dated survey. |
 | [PROGRESS.md](PROGRESS.md) | Current status and what's next. |
 | [patterns/TEMPLATE.md](patterns/TEMPLATE.md) | The mechanical procedure to author a pattern. |
 | [mcp-server/DESIGN.md](mcp-server/DESIGN.md) | MCP-internal decisions and amendments. |
@@ -56,7 +58,7 @@ machine-readable spec, not an appendix.
 
 ```bash
 npm test           # schema behavior suite (ajv strict mode + mutation tests)
-npm run validate   # every contract: schema + referential integrity + compliance files
+npm run validate   # every contract (schema, referential integrity, compliance files) and every journey
 npm run typecheck  # React reference implementations
 npm run check      # all of the above, plus the MCP server gate and the site typecheck
 ```
