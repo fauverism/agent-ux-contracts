@@ -1,7 +1,7 @@
 # Progress: AI UX Patterns Catalog
 
 **Last updated:** 2026-06-12  
-**Status:** 10/10 patterns at production standard (TEMPLATE.md). MCP server shipped (2 tools, 32 tests, 19/19 search evals, DEMO.md launch script). Site shipped: design foundation (approved), all pages, and the human layer — subscribe (Buttondown), contact channels, RSS, in-voice 404, REV. stamps. Catalog tests 242/242 green.
+**Status:** 10/10 patterns at production standard (TEMPLATE.md). MCP server shipped (2 tools, 37 tests, 19/19 search evals, DEMO.md launch script). Site shipped: design foundation (approved), all pages, and the human layer — subscribe (Buttondown), contact channels, RSS, in-voice 404, REV. stamps. Catalog tests 242/242 green.
 
 ## What's Done
 
@@ -63,9 +63,11 @@ COMPLIANCE.md files with real constraint→test mapping tables (the
 - **`search_patterns(query, category?, framework?)`** — two-pass lexical search (exact-substring keyword, fuzzy fallback at strict threshold) over weighted contract fields via fuse.js, behind a `SearchProvider` seam for future embeddings. Every result carries a deterministic relevance rationale, MUST summaries, `version` + `contract_hash` (sha256 of canonicalized contract). Queries matching a pattern's dontUseWhen return the pattern with a `caution` instead of hiding it. Empty results return the category map + suggestions, never a void.
 - **`scaffold_pattern(pattern_id, framework, options?)`** — deterministic template transforms over the reference implementations (byte-identical output, snapshot-tested). Returns files + full constraints array + `compliance_notes` anchoring every MUST/MUST_NOT to a code symbol. Options are per-pattern Zod schemas; unknown keys rejected with the option schema. Options that would strip MUST code were cut (DESIGN.md amendment).
 - **Failures** are in-band structured errors: `{ code, message, next_action, …context }` — `PATTERN_NOT_FOUND` (+did_you_mean), `FRAMEWORK_UNSUPPORTED` (+supported), `OPTIONS_INVALID` (+option_schema), `CONTRACT_INVALID`.
-- **32 tests** (`mcp-server/`, wired into root `npm run check`): loader rejects invalid contracts; ranking sanity; scaffold determinism; **generated React typechecked in a temp project, generated vanilla parse-checked, generated tests executed for the tokenBatching variant**; compliance-note coverage for every MUST × pattern × framework; e2e over real stdio.
+- **37 tests** (`mcp-server/`, wired into root `npm run check`): loader rejects invalid contracts; ranking sanity; scaffold determinism; **generated React typechecked in a temp project, generated vanilla parse-checked, generated tests executed for the tokenBatching variant, the returned verify command run verbatim for every pattern × framework in a temp consumer project (root `jsx: preserve`, and no tsconfig)**; compliance-note coverage for every MUST × pattern × framework; e2e over real stdio.
 - **Search evals** (`mcp-server/evals/`, `npm run eval`, in the check gate): 19 realistic agent queries — product phrasings, vague phrasings, misspellings, a dontUseWhen caution case, an off-topic fallback case. **19/19 at ship.** The baseline run (12/19) exposed that fuse scores every exact match 0.0, collapsing field weights; pass-1 ranking was rewritten as token-coverage × field-weight × 1/df, generic tokens are IDF-gated, and five contracts gained retrieval aliases (patch bumps: streaming-response 0.2.1; confidence-indicator, approval-gate, error-recovery, refusal-messaging 0.1.1). Every decision is an amendment in [mcp-server/DESIGN.md](mcp-server/DESIGN.md).
 - **[mcp-server/DEMO.md](mcp-server/DEMO.md)** — 90-second screen-recording script (the launch asset): `claude mcp add` → search → scaffold → compliance_notes → Cmd+F to the anchor → tests pass on camera. The "tests pass in a consumer project" claim is verified (12/12 with the documented demo-project setup).
+
+- **Hermetic verify (2026-11-11):** React scaffolds ship `tsconfig.verify.json` and the verify command is `npx tsx --tsconfig ./tsconfig.verify.json …`, so the first run passes whatever the consumer's `tsconfig.json` says (previously 13/13 failed under `jsx: preserve` or no tsconfig). DESIGN.md amendments 14–15; the same work found and fixed a vacuous nested-runner test.
 
 ### Deferred to v1.1 (deliberate, not forgotten)
 
@@ -144,5 +146,5 @@ npm run validate           # Validate 10 contracts against schema + cross-file c
 npm run typecheck          # tsc -p tsconfig.json (strict)
 npm run check              # test + validate + typecheck + mcp-server check (all-or-nothing gate)
 npm run new-pattern -- <id> [Display Name]  # Scaffold a pattern skeleton
-npm --prefix mcp-server test   # 32 MCP server tests (incl. generated-code compile gate)
+npm --prefix mcp-server test   # 37 MCP server tests (incl. generated-code compile gate)
 ```

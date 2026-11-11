@@ -10,9 +10,8 @@ one scaffold, and the agent can *prove* the code follows the rules.
 - [ ] Fresh Claude Code session in a demo project (`~/demo-chat-app`) prepared
       so the scaffolded tests run on camera (verified: `# pass 12`):
   - `npm i -D react react-dom @types/react @testing-library/react axe-core global-jsdom jsdom tsx typescript`
-  - `tsconfig.json` with `"jsx": "react-jsx"` (tsx reads it from the cwd —
-    without it the JSX transform falls back to classic and tests fail)
-  - `setup-dom.mjs`: `import 'global-jsdom/register'; globalThis.IS_REACT_ACT_ENVIRONMENT = true;`
+  - No `tsconfig.json` or `setup-dom.mjs` prep needed: the scaffold ships
+    `setup-dom.mjs` and `tsconfig.verify.json`, and the verify command names both
 - [ ] Terminal font ≥16pt, editor ready in a split for the file reveal
 - [ ] Do a full dry run — the two tool calls take seconds, but file reveals eat time
 
@@ -62,7 +61,7 @@ on arrival:"*
 Run (pre-staged, from `~/demo-chat-app`):
 
 ```bash
-node --import tsx --import ./setup-dom.mjs --test StreamingResponse.test.tsx
+npx tsx --tsconfig ./tsconfig.verify.json --import ./setup-dom.mjs --test StreamingResponse.test.tsx
 ```
 
 Show the green `# pass 12`.

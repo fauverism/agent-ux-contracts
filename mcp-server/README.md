@@ -10,7 +10,11 @@ Two tools over the pattern catalog, stdio transport:
   starting implementation generated deterministically from the reference
   templates: component + tests + COMPLIANCE.md, plus the full constraints
   array and `compliance_notes` mapping every MUST rule to the code anchor
-  that satisfies it. The receiving agent can verify, not just trust.
+  that satisfies it. The receiving agent can verify, not just trust: the
+  response also carries a `verify` object (run command + dependency list)
+  and the support files that command needs — `setup-dom.mjs`, and for React
+  `tsconfig.verify.json`, so the run does not depend on the consumer's own
+  `tsconfig.json` (none, or Next.js's `"jsx": "preserve"`, both work).
 
 The server owns no pattern data — it reads `../patterns/*/pattern.contract.json`
 at startup, validates each against `../schema/pattern-contract.schema.json`
@@ -23,7 +27,7 @@ and logs which ones failed. Design decisions and trade-offs: [DESIGN.md](DESIGN.
 cd mcp-server
 npm install
 npm run build      # emits dist/
-npm run check      # 32 tests + typecheck
+npm run check      # 37 tests + typecheck
 ```
 
 ### Claude Code
@@ -120,18 +124,20 @@ Options never remove MUST-implementing code — see the amendment note in
 ## Tests and evals
 
 ```bash
-npm test       # 32 unit/integration tests
+npm test       # 37 unit/integration tests
 npm run eval   # 19-case search scorecard (realistic agent queries)
 npm run check  # both, plus typecheck — the gate
 ```
 
-32 tests: loader rejects invalid contracts with reasons; search ranking
+37 tests: loader rejects invalid contracts with reasons; search ranking
 sanity (including the dontUseWhen caution and the never-empty fallback);
 scaffold determinism, option transforms, and structured errors;
 **generated React code is typechecked in a temp project and generated
 vanilla code is parse-checked — output that doesn't compile is a test
 failure**; the scaffolded test suite is executed for the tokenBatching
-variant; `compliance_notes` coverage of every MUST/MUST_NOT for every
+variant; **the returned `verify.command` is run verbatim for every pattern ×
+framework in a temp consumer project, once under a root `"jsx": "preserve"`
+tsconfig and once with no tsconfig**; `compliance_notes` coverage of every MUST/MUST_NOT for every
 pattern × framework; and an end-to-end pass over real stdio.
 
 The eval harness ([evals/](evals/)) runs product-language queries an agent

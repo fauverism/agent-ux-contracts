@@ -59,6 +59,18 @@ const TEST_DEPENDENCIES: Record<Framework, string[]> = {
   vanilla: ['jsdom', 'global-jsdom'],
 };
 
+/**
+ * JSX settings for the verify run, shipped beside the React tests and named
+ * explicitly in the verify command (DESIGN.md amendment 14). `tsx` otherwise
+ * takes its JSX mode from whatever tsconfig.json sits above the cwd — absent
+ * or `"jsx": "preserve"` (Next.js) both compile to classic `React.createElement`
+ * and every test dies with "React is not defined". The non-standard file name
+ * keeps it invisible to the consumer's tsc, editor, and bundler.
+ */
+export const VERIFY_TSCONFIG_PATH = 'tsconfig.verify.json';
+const VERIFY_TSCONFIG_CONTENT =
+  JSON.stringify({ compilerOptions: { jsx: 'react-jsx' } }, null, 2) + '\n';
+
 /** Extract a `## Heading` section's body from doc.mdx (up to the next `## `). */
 function mdxSection(doc: string, heading: string): string | undefined {
   const match = doc.match(new RegExp(`^## ${heading}\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, 'm'));
@@ -203,10 +215,17 @@ export function scaffoldPattern(
       role: 'support',
       content: readFileSync(join(catalog.repoRoot, 'scripts', 'setup-dom.mjs'), 'utf8'),
     });
+    if (fw === 'react') {
+      emitted.push({
+        path: VERIFY_TSCONFIG_PATH,
+        role: 'support',
+        content: VERIFY_TSCONFIG_CONTENT,
+      });
+    }
     verify = {
       command:
         fw === 'react'
-          ? `node --import tsx --import ./setup-dom.mjs --test ${componentName}.${testExt}`
+          ? `npx tsx --tsconfig ./${VERIFY_TSCONFIG_PATH} --import ./setup-dom.mjs --test ${componentName}.${testExt}`
           : `node --import ./setup-dom.mjs --test ${componentName}.${testExt}`,
       dependencies: TEST_DEPENDENCIES[fw],
     };

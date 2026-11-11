@@ -282,6 +282,51 @@ Approved design, adjusted where implementation proved a decision wrong:
     from the same doc.mdx the site renders. Search stays lean — the wiring
     matters at scaffold time, not while ranking candidates.
 
+### Verify-loop findings (measured in consumer projects, 2026-11-11)
+
+14. **The verify run carries its own JSX settings.**
+    *Decision:* React scaffolds emit a second `support` file,
+    `tsconfig.verify.json` (`{"compilerOptions":{"jsx":"react-jsx"}}`), and
+    `verify.command` names it:
+    `npx tsx --tsconfig ./tsconfig.verify.json --import ./setup-dom.mjs --test <Name>.test.tsx`.
+    Vanilla scaffolds are unchanged (no TypeScript, no file, same command).
+    *Why:* `tsx` takes its JSX mode from the nearest `tsconfig.json` above
+    the cwd. With none, or with `"jsx": "preserve"` (every Next.js project,
+    including this repo's own site), it compiles to classic
+    `React.createElement` and the scaffolded suite fails 13 of 13 with
+    "React is not defined" — amendment 9's "works out of the box" was only
+    true for projects that already set `react-jsx`, and nothing in the
+    response said so. A verify command that depends on ambient config is
+    not a proof.
+    *Alternatives — (a) to (c) measured passing in a `jsx: preserve` project:*
+    (a) emit a nested `tsconfig.json` — smallest diff, no command change,
+    but editors and Vite/Vitest resolve the *nearest* `tsconfig.json` per
+    file, so it would silently take the scaffolded component out of the
+    consumer's own project settings (paths aliases, strictness). A
+    non-standard file name is read by nothing except the command that
+    names it. (b) `TSX_TSCONFIG_PATH=… node --import tsx …` — same effect,
+    but env-prefix syntax is not portable across shells; the `tsx` CLI flag
+    is. (c) `@jsxRuntime automatic` pragmas in the component and test — no
+    extra file, but it writes a test-runner concern into production source
+    and into all ten reference implementations. (d) Document the
+    requirement in `verify` — honest, not hermetic; the first run still
+    fails in a Next.js project.
+    *Limits:* the command still runs from the pattern directory (it always
+    did — `./setup-dom.mjs` is relative). The verify config sets only
+    `jsx`; a consumer who later rewrites the component's imports to use
+    their `paths` aliases should add `"extends"` to it.
+    *Gate:* `test/scaffold.test.ts` scaffolds every pattern × framework
+    into a temp project outside this repo and runs the returned command
+    verbatim, once under a root `"jsx": "preserve"` tsconfig and once with
+    no tsconfig at all.
+15. **Nested `node --test` runs must drop `NODE_TEST_CONTEXT`.** Found
+    while writing the gate above: a test that spawns `node --test` inherits
+    the runner's `NODE_TEST_CONTEXT`, and the inner run then exits 0 even
+    when every test fails. The tokenBatching behavior test (amendment 9)
+    had been passing vacuously on that account. Both it and the new
+    consumer-project tests now clear the variable for the child; with the
+    old verify command restored, the consumer tests fail as they should.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

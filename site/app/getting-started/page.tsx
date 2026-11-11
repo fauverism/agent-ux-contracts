@@ -68,7 +68,7 @@ const SEARCH_RESULT = `{
 const SCAFFOLD_PROMPT = 'Scaffold streaming-response in React.';
 
 const TEST_COMMAND =
-  'node --import tsx --import ./setup-dom.mjs --test StreamingResponse.test.tsx';
+  'npx tsx --tsconfig ./tsconfig.verify.json --import ./setup-dom.mjs --test StreamingResponse.test.tsx';
 
 const TEST_OUTPUT = '# pass 12\n# fail 0';
 

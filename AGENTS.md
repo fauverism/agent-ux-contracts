@@ -41,7 +41,7 @@ This is one all-or-nothing gate:
 npm test                       # 242 catalog tests (schema mutation + react + vanilla, axe in states)
 && npm run validate            # 10 contracts: ajv schema + cross-file integrity
 && npm run typecheck           # tsc strict
-&& npm --prefix mcp-server run check   # 32 MCP tests + 19/19 search evals + typecheck
+&& npm --prefix mcp-server run check   # 37 MCP tests + 19/19 search evals + typecheck
 && npm --prefix site run typecheck     # site strict typecheck
 ```
 
@@ -162,9 +162,14 @@ if behavior moved, and update the impls' trace headers.
   production build clobbers the dev server's chunks and you get "Application
   error" / `MODULE_NOT_FOUND` in dev. Stop dev first; if it's already corrupted,
   `rm -rf site/.next` and restart dev.
-- **`tsx` reads `tsconfig.json` from the current working directory.** A consumer
-  project running scaffolded tests needs `"jsx": "react-jsx"` in its own
-  `tsconfig`, or JSX falls back to classic and "React is not defined" appears.
+- **`tsx` reads `tsconfig.json` from the current working directory.** With none,
+  or with `"jsx": "preserve"`, JSX falls back to classic and "React is not
+  defined" appears. Scaffolds therefore ship `tsconfig.verify.json` and the
+  verify command passes it via `tsx --tsconfig` (DESIGN.md amendment 14) — don't
+  reintroduce a command that leans on the consumer's config.
+- **A test that spawns `node --test` must delete `NODE_TEST_CONTEXT` from the
+  child's env.** Inherited, it makes the inner run exit 0 on failure, so the
+  outer test passes vacuously (DESIGN.md amendment 15).
 - **Substring search has no stemmer.** "failed" doesn't match "failure". v1
   closes these gaps with contract `aliases` (which double as documentation), not
   a stemmer. Add the alias.

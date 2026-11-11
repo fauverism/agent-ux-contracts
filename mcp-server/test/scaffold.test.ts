@@ -1,7 +1,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { execFileSync, execSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PatternCatalog } from '../src/loader.js';
@@ -26,6 +27,18 @@ after(() => {
   rmSync(tmpRoot, { recursive: true, force: true });
 });
 
+/**
+ * Environment for a nested `node --test` run. node:test marks its children
+ * with NODE_TEST_CONTEXT; a runner that inherits it reports to a parent that
+ * is not listening and exits 0 even when every test fails. Clearing it makes
+ * the nested run's exit code mean what it says.
+ */
+const nestedRunEnv = (): NodeJS.ProcessEnv => {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+};
+
 const writeCase = (name: string, result: ScaffoldResult): string => {
   const dir = join(tmpRoot, name);
   mkdirSync(dir, { recursive: true });
@@ -49,6 +62,11 @@ test('response shape: version, hash, constraints array, and roles are present', 
   assert.ok(result.constraints.length > 0, 'full constraints array included');
   assert.deepEqual(
     result.files.map((f) => f.role),
+    ['component', 'test', 'support', 'support', 'compliance'],
+  );
+  const vanilla = scaffoldPattern(catalog, 'approval-gate', 'vanilla');
+  assert.deepEqual(
+    vanilla.files.map((f) => f.role),
     ['component', 'test', 'support', 'compliance'],
   );
   assert.deepEqual(result.options_applied, { includeTests: true, includeCompliance: true });
@@ -59,9 +77,16 @@ test('verify loop: scaffold ships the DOM bootstrap, a run command, and the depe
   const setup = result.files.find((f) => f.role === 'support')!;
   assert.equal(setup.path, 'setup-dom.mjs');
   assert.match(setup.content, /global-jsdom\/register/);
+  // React scaffolds carry their own JSX settings and the command names them,
+  // so the run does not depend on the consumer's tsconfig (amendment 14).
+  const verifyConfig = result.files.find((f) => f.path === 'tsconfig.verify.json')!;
+  assert.equal(verifyConfig.role, 'support');
+  assert.deepEqual(JSON.parse(verifyConfig.content), {
+    compilerOptions: { jsx: 'react-jsx' },
+  });
   assert.equal(
     result.verify?.command,
-    'node --import tsx --import ./setup-dom.mjs --test ApprovalGate.test.tsx',
+    'npx tsx --tsconfig ./tsconfig.verify.json --import ./setup-dom.mjs --test ApprovalGate.test.tsx',
   );
   assert.ok(result.verify!.dependencies.includes('@testing-library/react'));
 
@@ -71,6 +96,10 @@ test('verify loop: scaffold ships the DOM bootstrap, a run command, and the depe
     'node --import ./setup-dom.mjs --test ApprovalGate.test.mjs',
   );
   assert.ok(!vanilla.verify!.dependencies.includes('tsx'), 'vanilla needs no TS loader');
+  assert.ok(
+    !vanilla.files.some((f) => f.path === 'tsconfig.verify.json'),
+    'vanilla ships no tsconfig',
+  );
 
   const noTests = scaffoldPattern(catalog, 'approval-gate', 'react', { includeTests: false });
   assert.equal(noTests.verify, undefined);
@@ -323,9 +352,60 @@ test('generated tests pass for the tokenBatching variant (behavior, not just syn
   execFileSync(
     process.execPath,
     ['--import', 'tsx', '--import', join(dir, 'setup-dom.mjs'), '--test', testFile],
-    { cwd: repoRoot, stdio: 'pipe' },
+    { cwd: repoRoot, stdio: 'pipe', env: nestedRunEnv() },
   );
 });
+
+// --- the returned verify command, run as a consumer would run it ---
+
+/**
+ * A consumer project outside this repo's tree, so no tsconfig.json of ours is
+ * above the cwd. Dependencies resolve through a node_modules symlink to the
+ * repo root's install, which holds every entry in verify.dependencies.
+ */
+function consumerProject(rootTsconfig: object | null): string {
+  const root = mkdtempSync(join(tmpdir(), 'auc-consumer-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
+  symlinkSync(join(repoRoot, 'node_modules'), join(root, 'node_modules'), 'dir');
+  if (rootTsconfig) {
+    writeFileSync(join(root, 'tsconfig.json'), JSON.stringify(rootTsconfig));
+  }
+  return root;
+}
+
+/** Write the scaffold into <root>/src/patterns/<id>/ and run verify.command verbatim there. */
+function runVerify(root: string, id: string, framework: string): void {
+  const result = scaffoldPattern(catalog, id, framework);
+  const dir = join(root, 'src', 'patterns', `${id}-${framework}`);
+  mkdirSync(dir, { recursive: true });
+  for (const file of result.files) writeFileSync(join(dir, file.path), file.content);
+  try {
+    execSync(result.verify!.command, { cwd: dir, stdio: 'pipe', env: nestedRunEnv() });
+  } catch (err) {
+    const out = (err as { stdout?: Buffer }).stdout?.toString() ?? String(err);
+    assert.fail(`${id}/${framework}: \`${result.verify!.command}\` failed:\n${out}`);
+  }
+}
+
+const consumerCases: Array<[string, object | null]> = [
+  ['root tsconfig sets "jsx": "preserve" (Next.js)', { compilerOptions: { jsx: 'preserve' } }],
+  ['no tsconfig.json at all', null],
+];
+
+for (const [label, rootTsconfig] of consumerCases) {
+  test(`verify command passes first run in a consumer project: ${label}`, () => {
+    const root = consumerProject(rootTsconfig);
+    try {
+      for (const [id, pattern] of catalog.patterns) {
+        for (const framework of pattern.contract.implementations) {
+          runVerify(root, id, framework);
+        }
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
 
 function catalogIds(): string[] {
   return [...catalog.patterns.keys()].sort();

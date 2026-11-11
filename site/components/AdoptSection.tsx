@@ -35,15 +35,21 @@ export function AdoptSection({ pattern }: { pattern: Pattern }) {
   const fw = hasReact ? 'react' : contract.implementations[0];
   const otherFws = contract.implementations.filter((f) => f !== fw);
 
+  // Same file scaffold_pattern emits (mcp-server/src/scaffold.ts): the test
+  // run brings its own JSX settings instead of reading the project's tsconfig.
+  const verifyConfigPath = `src/patterns/${id}/tsconfig.verify.json`;
   const vendorCommands = [
     `git clone --depth 1 ${REPO} /tmp/agent-ux-contracts`,
     `cp -r /tmp/agent-ux-contracts/patterns/${id}/${fw} src/patterns/${id}`,
     `cp /tmp/agent-ux-contracts/scripts/setup-dom.mjs src/patterns/${id}/`,
+    ...(hasReact
+      ? [`echo '{"compilerOptions":{"jsx":"react-jsx"}}' > ${verifyConfigPath}`]
+      : []),
   ].join('\n');
 
   const setupPath = `./src/patterns/${id}/setup-dom.mjs`;
   const testCommand = hasReact
-    ? `npm i -D ${REACT_TEST_DEPS}\nnode --import tsx --import ${setupPath} --test src/patterns/${id}/*.test.tsx`
+    ? `npm i -D ${REACT_TEST_DEPS}\nnpx tsx --tsconfig ./${verifyConfigPath} --import ${setupPath} --test src/patterns/${id}/*.test.tsx`
     : `npm i -D ${VANILLA_TEST_DEPS}\nnode --import ${setupPath} --test src/patterns/${id}/*.test.mjs`;
 
   const pinLine = `${id} ${contract.version} sha256:${contractHash}`;
@@ -81,9 +87,12 @@ export function AdoptSection({ pattern }: { pattern: Pattern }) {
       <p className="mt-2 text-sm text-ink-70">
         {hasReact && (
           <>
-            The runner picks up your project&rsquo;s <code>tsconfig.json</code>;
-            it needs <code>&quot;jsx&quot;: &quot;react-jsx&quot;</code>, which
-            any React project already sets.{' '}
+            The run reads its JSX setting from{' '}
+            <code>tsconfig.verify.json</code>, not from your project&rsquo;s{' '}
+            <code>tsconfig.json</code> — so it passes under Next.js&rsquo;s{' '}
+            <code>&quot;jsx&quot;: &quot;preserve&quot;</code> or with no
+            tsconfig at all, and nothing else in your toolchain reads that
+            file.{' '}
           </>
         )}
         {contract.implementations.includes('vanilla') && (
@@ -111,7 +120,8 @@ export function AdoptSection({ pattern }: { pattern: Pattern }) {
       />
       <p className="mt-2 text-sm text-ink-70">
         The response carries the same three files plus <code>agent_notes</code>,
-        a <code>verify</code> command, and <code>compliance_notes</code>{' '}
+        a <code>verify</code> command with the support files it needs, and{' '}
+        <code>compliance_notes</code>{' '}
         anchoring every MUST to the code that satisfies it.
       </p>
 
