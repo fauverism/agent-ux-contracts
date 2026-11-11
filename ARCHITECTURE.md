@@ -350,7 +350,7 @@ local bug.
 One all-or-nothing gate, `npm run check` at the root:
 
 ```
-npm test                       242 catalog tests (schema mutation + react + vanilla, axe in states)
+npm test                       369 catalog tests (schema mutation + react + vanilla, axe in states)
   && npm run validate          10 contracts: schema (ajv) + cross-file integrity
   && npm run typecheck         tsc -p tsconfig.json (strict)
   && npm --prefix mcp-server run check   32 MCP tests (incl. generated-code compile gate) + eval + typecheck

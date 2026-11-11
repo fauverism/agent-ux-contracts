@@ -56,7 +56,7 @@ const TEST_DEPENDENCIES: Record<Framework, string[]> = {
     'tsx',
     'typescript',
   ],
-  vanilla: ['jsdom', 'global-jsdom'],
+  vanilla: ['axe-core', 'jsdom', 'global-jsdom'],
 };
 
 /** Extract a `## Heading` section's body from doc.mdx (up to the next `## `). */

@@ -108,7 +108,9 @@ export function StreamingResponse({
         )}
       </div>
 
-      {isActive && onStop && (
+      {/* Rendered whenever the stream is active, with or without an onStop
+          handler: Escape alone is not a visible control (constraint: interruptible). */}
+      {isActive && (
         <button
           ref={stopRef}
           type="button"

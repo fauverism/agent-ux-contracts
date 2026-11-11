@@ -1,5 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import axe from 'axe-core';
 import { ConfidenceIndicator, CONFIDENCE_LABELS } from './ConfidenceIndicator.js';
 
 let host;
@@ -23,6 +24,41 @@ const labelEl = () => host.querySelector('.confidence-indicator__label');
 const toggleBtn = () => host.querySelector('.confidence-indicator__toggle');
 const detailEl = () => host.querySelector('.confidence-indicator__detail');
 
+const LEVELS = Object.keys(CONFIDENCE_LABELS);
+const rootEl = () => host.querySelector('.confidence-indicator');
+const FULL = { detail: 'Reasoning.', refusalReason: 'Reason.', caveats: ['Caveat'] };
+
+const AXE_OPTIONS = {
+  runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa'] },
+  rules: { 'color-contrast': { enabled: false } },
+};
+
+test('no-false-confidence: every level is displayed as given, never re-mapped to another level', () => {
+  for (const level of LEVELS) {
+    host.textContent = '';
+    mounted({ level, ...FULL });
+    assert.equal(rootEl().dataset.level, level, `${level}: data-level is the level given`);
+    assert.equal(labelEl().textContent, CONFIDENCE_LABELS[level]);
+    // No other level's term appears anywhere in the component — in particular
+    // a lower level never also shows the "high" term.
+    for (const other of LEVELS.filter((l) => l !== level)) {
+      assert.ok(
+        !host.textContent.includes(CONFIDENCE_LABELS[other]),
+        `${level} does not display the ${other} term`,
+      );
+    }
+  }
+});
+
+test('no-false-confidence: a downgrade from the host is shown immediately, with no stale higher level', () => {
+  const ci = mounted({ level: 'high' });
+  ci.update({ level: 'low' });
+  assert.equal(rootEl().dataset.level, 'low');
+  assert.equal(labelEl().textContent, CONFIDENCE_LABELS.low);
+  assert.ok(!host.textContent.includes(CONFIDENCE_LABELS.high));
+  assert.equal(host.querySelectorAll('.confidence-indicator').length, 1, 'no stale copy left behind');
+});
+
 test('accessible-confidence: text label rendered for each level', () => {
   for (const [level, text] of Object.entries(CONFIDENCE_LABELS)) {
     host.textContent = '';
@@ -44,12 +80,43 @@ test('consistent-semantics: CONFIDENCE_LABELS values are all unique', () => {
   assert.equal(new Set(values).size, values.length);
 });
 
+test('consistent-semantics: a level renders the same term whatever else is on screen', () => {
+  for (const level of LEVELS) {
+    host.textContent = '';
+    mounted({ level });
+    const bare = labelEl().textContent;
+    host.textContent = '';
+    mounted({ level, ...FULL });
+    assert.equal(bare, CONFIDENCE_LABELS[level]);
+    assert.equal(labelEl().textContent, bare, `${level}: same term with and without detail`);
+  }
+});
+
 test('keyboard-expandable: toggle button present when detail provided', () => {
   mounted({ level: 'moderate', detail: 'Based on strong evidence.' });
   const btn = toggleBtn();
   assert.ok(btn, 'toggle button rendered');
   assert.equal(btn.getAttribute('aria-expanded'), 'false');
   assert.equal(detailEl().hidden, true);
+});
+
+test('keyboard-expandable: the toggle is a native, focusable button with a name', () => {
+  mounted({ level: 'moderate', detail: 'Based on strong evidence.' });
+  const btn = toggleBtn();
+  // Native <button type="button">: Enter/Space activation and Tab reach come
+  // from the platform, not from handlers that could be removed.
+  assert.equal(btn.tagName, 'BUTTON');
+  assert.equal(btn.type, 'button');
+  assert.equal(btn.disabled, false);
+  assert.ok(btn.tabIndex >= 0, 'in the tab order');
+  assert.ok(!btn.closest('[hidden]') && !btn.closest('[aria-hidden="true"]'));
+  assert.ok(btn.textContent.trim().length > 0, 'has an accessible name');
+  btn.focus();
+  assert.ok(document.activeElement === btn, 'focusable');
+  // Toggling does not move focus away from the control.
+  btn.click();
+  assert.ok(document.activeElement === btn, 'focus stays on the toggle after expanding');
+  assert.equal(detailEl().hidden, false);
 });
 
 test('keyboard-expandable: clicking toggle opens and closes the detail', () => {
@@ -105,4 +172,24 @@ test('update: level change re-renders with the new label', () => {
   ci.update({ level: 'low' });
   assert.equal(labelEl().textContent, CONFIDENCE_LABELS.low);
   assert.equal(host.querySelector('.confidence-indicator').dataset.level, 'low');
+});
+
+test('axe: no WCAG A/AA violations across all five levels, detail collapsed and expanded', async () => {
+  for (const level of LEVELS) {
+    host.textContent = '';
+    mounted({
+      level,
+      detail: 'Some reasoning.',
+      refusalReason: level === 'refusal' ? 'Cannot answer.' : undefined,
+      caveats: level === 'conditional' ? ['Caveat one'] : undefined,
+    });
+    assert.equal(rootEl().dataset.level, level);
+    let result = await axe.run(host, AXE_OPTIONS);
+    assert.deepEqual(result.violations.map((v) => v.id), [], `${level}: axe violations`);
+
+    toggleBtn().click();
+    assert.equal(detailEl().hidden, false);
+    result = await axe.run(host, AXE_OPTIONS);
+    assert.deepEqual(result.violations.map((v) => v.id), [], `${level} (expanded): axe violations`);
+  }
 });

@@ -161,7 +161,7 @@ export const COMPLIANCE_NOTES: Record<string, ComplianceEntry[]> = {
     },
     {
       id: 'accurate-preview',
-      anchor: { react: 'onApprove(payload)', vanilla: 'onApprove(this.options.payload)' },
+      anchor: { react: 'onApprove(payload)', vanilla: 'onApprove(this.previewedPayload)' },
       note: 'The payload renders verbatim in the detail <pre>, and the approve handler receives that same string — execute the argument you are handed.',
     },
     {

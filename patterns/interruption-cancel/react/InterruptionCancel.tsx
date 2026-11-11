@@ -107,7 +107,9 @@ export function InterruptionCancel({
   return (
     <div className="interruption-cancel" data-phase={phase} onKeyDown={handleKeyDown}>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {WORK_ANNOUNCEMENTS[phase]}
+        {/* A raced completion says so to assistive technology too, not only
+            visually (constraint: completion-race-honest). */}
+        {raced ? `${WORK_ANNOUNCEMENTS.completed} ${RACE_DISCLOSURE}` : WORK_ANNOUNCEMENTS[phase]}
       </div>
 
       {/* tabIndex -1: focus recovery target when the cancel control goes away. */}

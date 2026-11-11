@@ -38,7 +38,7 @@ npm run check
 This is one all-or-nothing gate:
 
 ```
-npm test                       # 242 catalog tests (schema mutation + react + vanilla, axe in states)
+npm test                       # 369 catalog tests (schema mutation + react + vanilla, axe in every implemented state)
 && npm run validate            # 10 contracts: ajv schema + cross-file integrity
 && npm run typecheck           # tsc strict
 && npm --prefix mcp-server run check   # 32 MCP tests + 19/19 search evals + typecheck

@@ -1,7 +1,7 @@
 # Progress: AI UX Patterns Catalog
 
-**Last updated:** 2026-06-12  
-**Status:** 10/10 patterns at production standard (TEMPLATE.md). MCP server shipped (2 tools, 32 tests, 19/19 search evals, DEMO.md launch script). Site shipped: design foundation (approved), all pages, and the human layer — subscribe (Buttondown), contact channels, RSS, in-voice 404, REV. stamps. Catalog tests 242/242 green.
+**Last updated:** 2026-11-11  
+**Status:** 10/10 patterns at production standard (TEMPLATE.md). MCP server shipped (2 tools, 32 tests, 19/19 search evals, DEMO.md launch script). Site shipped: design foundation (approved), all pages, and the human layer — subscribe (Buttondown), contact channels, RSS, in-voice 404, REV. stamps. Catalog tests 369/369 green (proof audit 2026-11-11).
 
 ## What's Done
 
@@ -52,7 +52,8 @@ COMPLIANCE.md files with real constraint→test mapping tables (the
 
 ## Test Coverage
 
-- **242 tests passing:** 14 schema mutation tests + 26 streaming-response + 18 interruption-cancel + 16 refusal-messaging + 160 across the 7 retrofitted patterns + 8 source-attribution kit extras.
+- **369 tests passing:** 18 schema mutation tests + 351 pattern tests (React + vanilla): approval-gate 51, confidence-indicator 32, error-recovery 29, generation-control 33, interruption-cancel 34, prompt-composer 44, refusal-messaging 28, source-attribution 34, streaming-response 36, thinking-visibility 30.
+- **axe-core runs in both frameworks** in every implemented contract state (vanilla had none before 2026-11-11).
 - **10 patterns with valid contracts:** schema enforces structure; validate-contracts enforces file-level integrity.
 - **0 test failures. 0 typecheck errors.**
 
@@ -108,6 +109,39 @@ The parts that make it feel made by a person. Tone: warm, direct, zero marketing
 - **[/styleguide](site/app/styleguide/page.tsx)** — hidden review route (unlinked, noindex): palette swatches, the accent usage contract rendered as MUST/MUST_NOT rules, type scale specimens, a visible 4px-baseline overlay panel, every primitive, and forced light/dark panels side by side. **Review this route before any pages are built.**
 - Root `npm run check` now includes the site typecheck. Build verified: static export, both modes verified in-browser (computed token values checked, not just screenshots).
 
+## Proof audit (2026-11-11)
+
+A spot check found `approval-gate`'s `controls-accessible` test asserted only the container. All ten patterns were then audited, MUST by MUST, in both frameworks: would the named test fail if the behavior were removed?
+
+**Found:** 36 weak or missing MUST proofs (most of them in both frameworks), no axe-core run in any vanilla test file, React axe covering a subset of states, and three implementation bugs.
+
+**Fixed — tests.** Every weak or missing proof now has a named test (`"<constraint-id>: <behavior>"`) that fails when the behavior is removed; 19 single-behavior mutants across the ten patterns were all caught by the test named for the constraint. axe-core now runs in both frameworks in every implemented contract state. Catalog tests went from 250 to 369. Each `COMPLIANCE.md` names the tests that exist, and gained a "Limits of the proof" section that says what jsdom cannot show.
+
+**Fixed — implementation bugs.**
+- `streaming-response` (React): the stop control rendered only when the optional `onStop` prop was passed. It now renders whenever the stream is active (`interruptible`).
+- `approval-gate` (vanilla): the payload was re-read from mutable `options` at approve time, so preview and execution could diverge. It is now captured at mount (`accurate-preview`).
+- `interruption-cancel` (vanilla): `start()` during `cancel-requested` re-entered `running`. It is now ignored in that phase (`no-silent-continuation`).
+- `approval-gate` (React): a `summary` change after a decision re-announced "Approval required". The arrival announcement is now written only while `proposed`.
+- `interruption-cancel` (both, owner decision): a raced completion now announces the race disclosure in the live region, not only visually.
+- `prompt-composer` doc examples cleared the draft unconditionally after a send, wiping text typed while busy. They now clear only if the draft is unchanged.
+
+**Recorded as deviations (owner decision — not changed).**
+- `approval-gate` (vanilla): `approve()` is a public method, so a host can bypass the approve control.
+- `refusal-messaging` (React): an empty `reason` is not rejected at runtime (vanilla throws).
+
+**Deferred — contract questions.** No contract was changed. These rules are only partly testable as written; resolving them is a contract decision with a version bump:
+- `no-false-confidence` (confidence-indicator): calibration belongs to the data producer; only faithful display is tested.
+- `source-verifiable` (source-attribution): "publicly accessible" cannot be checked by a component; only unmasked linking is tested. `url` is required by type only.
+- `draft-preserved` (prompt-composer): `onSubmit` returns nothing, so accepted vs rejected is unknowable; only "the component never clears the draft" is tested.
+- `interruptible` (streaming-response): bundles two rules (control present; stop latches) under one id.
+- `consolidated-numbering` (source-attribution, React): the kit has no index helper, so numbering is the host's job.
+- `controls-accessible` (approval-gate): whether "name the action" applies to reject is ambiguous; the implementation follows the verification example.
+- `interruption-cancel` anatomy names the summary as the focus target; the constraint and both implementations use the work region.
+
+**Deferred — needs a browser.** Keyboard activation, "visible", and "inserts a newline" are proven by proxy in jsdom. `no-layout-shift` and `grow-with-content` (SHOULD) are untested; the "e2e pass" earlier docs referred to does not exist. Safari's IME confirm-Enter (keyCode 229) is unverified for `ime-safe`.
+
+**Deferred — smaller items seen in passing.** `doc.mdx` in approval-gate, prompt-composer and streaming-response states a few requirements that are guidance, not constraints. `confidence-indicator` vanilla rebuilds its DOM on `update()` (drops focus). `streaming-response` React treats an `error` that arrives after the falling edge as success; vanilla `reset()` mid-stream drops focus. React stops Escape propagation where vanilla does not (streaming-response, interruption-cancel). Vanilla scaffolds now list `axe-core` as a test dependency (DESIGN.md amendment 14).
+
 ## What's Next
 
 ### Phase 4: Launch
@@ -139,7 +173,7 @@ The parts that make it feel made by a person. Tone: warm, direct, zero marketing
 ## Commands
 
 ```bash
-npm test                    # Run 242 tests (node:test glob patterns/**/*.test.{tsx,mjs})
+npm test                    # Run 369 tests (node:test glob patterns/**/*.test.{tsx,mjs})
 npm run validate           # Validate 10 contracts against schema + cross-file checks
 npm run typecheck          # tsc -p tsconfig.json (strict)
 npm run check              # test + validate + typecheck + mcp-server check (all-or-nothing gate)

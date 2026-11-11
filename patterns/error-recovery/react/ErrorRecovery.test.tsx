@@ -1,5 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { useState } from 'react';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import axe from 'axe-core';
 import { ErrorRecovery, FAILURE_COPY } from './ErrorRecovery';
@@ -17,6 +18,28 @@ const inputEl = (c: HTMLElement) =>
 const alertEl = (c: HTMLElement) => c.querySelector<HTMLElement>('[role="alert"]')!;
 const retryBtn = (c: HTMLElement) =>
   c.querySelector<HTMLButtonElement>('.error-recovery__retry');
+
+const stateOf = (c: HTMLElement) =>
+  c.querySelector<HTMLElement>('.error-recovery')!.dataset.state;
+const detailToggle = (c: HTMLElement) =>
+  c.querySelector<HTMLButtonElement>('.error-recovery__detail-toggle');
+const detailEl = (c: HTMLElement) => c.querySelector<HTMLElement>('.error-recovery__detail');
+
+/** A host that owns the draft, as a real one does. */
+function Host({
+  failure,
+  onRetry = () => {},
+  initial = 'my draft',
+}: {
+  failure: FailureInfo | null;
+  onRetry?: () => void | Promise<void>;
+  initial?: string;
+}) {
+  const [input, setInput] = useState(initial);
+  return (
+    <ErrorRecovery failure={failure} input={input} onInputChange={setInput} onRetry={onRetry} />
+  );
+}
 
 const networkFailure: FailureInfo = { kind: 'network' };
 const refusalFailure: FailureInfo = { kind: 'refusal' };
@@ -51,6 +74,80 @@ test('input-preserved: textarea is never disabled or readOnly', () => {
   );
   assert.equal(inputEl(container).disabled, false);
   assert.equal(inputEl(container).readOnly, false);
+});
+
+test('input-preserved: edits made after a failure and during a retry are kept', async () => {
+  let finishRetry!: () => void;
+  const onRetry = () => new Promise<void>((resolve) => { finishRetry = resolve; });
+  const { container, rerender } = render(<Host failure={null} onRetry={onRetry} />);
+
+  // The failure arrives: the draft is still there and can be edited.
+  rerender(<Host failure={networkFailure} onRetry={onRetry} />);
+  assert.equal(stateOf(container), 'errored');
+  assert.equal(inputEl(container).value, 'my draft', 'draft survives the failure');
+  fireEvent.change(inputEl(container), { target: { value: 'my draft, reworded' } });
+  assert.equal(inputEl(container).value, 'my draft, reworded', 'editable after the failure');
+
+  // While the retry is in flight the input stays editable too.
+  await act(async () => { fireEvent.click(retryBtn(container)!); });
+  assert.equal(stateOf(container), 'retrying');
+  assert.equal(inputEl(container).disabled, false);
+  assert.equal(inputEl(container).readOnly, false);
+  fireEvent.change(inputEl(container), { target: { value: 'edited mid-retry' } });
+  assert.equal(inputEl(container).value, 'edited mid-retry', 'editable while retrying');
+
+  // The retry fails again with a different error: still nothing lost.
+  await act(async () => { finishRetry(); });
+  rerender(<Host failure={{ kind: 'timeout' }} onRetry={onRetry} />);
+  assert.equal(stateOf(container), 'errored');
+  assert.equal(inputEl(container).value, 'edited mid-retry', 'draft survives a second failure');
+});
+
+test('plain-language-summary: the summary is the plain-language copy; raw codes stay in the detail region', () => {
+  const raw = { message: 'ECONNRESET 0x1F at fetch (node:internal)', detail: 'request_id=req_abc123' };
+  for (const [kind, copy] of Object.entries(FAILURE_COPY)) {
+    const { container, unmount } = render(
+      <ErrorRecovery
+        failure={{ kind: kind as FailureInfo['kind'], ...raw }}
+        input=""
+        onInputChange={() => {}}
+        onRetry={() => {}}
+      />,
+    );
+    const summary = alertEl(container).textContent!;
+    assert.equal(summary, copy.summary, `${kind}: summary is the taxonomy copy, verbatim`);
+    assert.ok(!summary.includes(raw.message), `${kind}: raw message not in the summary`);
+    assert.ok(!summary.includes(raw.detail), `${kind}: technical detail not in the summary`);
+
+    // Raw text lives only in the detail region, collapsed until asked for.
+    const detail = detailEl(container)!;
+    assert.equal(detail.hidden, true, `${kind}: detail collapsed by default`);
+    assert.ok(detail.textContent!.includes(raw.message));
+    assert.ok(detail.textContent!.includes(raw.detail));
+    const outsideDetail = container.textContent!.replace(detail.textContent!, '');
+    assert.ok(!outsideDetail.includes(raw.message), `${kind}: raw message nowhere else`);
+    assert.ok(!outsideDetail.includes(raw.detail), `${kind}: technical detail nowhere else`);
+    unmount();
+  }
+});
+
+test('plain-language-summary: the technical detail is reachable through a disclosure', () => {
+  const { container } = render(
+    <ErrorRecovery
+      failure={{ kind: 'unknown', message: 'HTTP 500' }}
+      input=""
+      onInputChange={() => {}}
+      onRetry={() => {}}
+    />,
+  );
+  const toggle = detailToggle(container)!;
+  assert.equal(toggle.tagName, 'BUTTON');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.getAttribute('aria-controls'), detailEl(container)!.id);
+  fireEvent.click(toggle);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(detailEl(container)!.hidden, false);
+  assert.match(detailEl(container)!.textContent!, /HTTP 500/);
 });
 
 test('error-announced: alert role present on summary element', () => {
@@ -150,16 +247,37 @@ test('partialOutput: partial output rendered above the failure summary', () => {
   assert.match(partial!.textContent!, /Partial answer/);
 });
 
-test('axe: no WCAG A/AA violations in idle and errored states', async () => {
-  const { container, rerender } = render(
-    <ErrorRecovery failure={null} input="my prompt" onInputChange={() => {}} onRetry={() => {}} />,
-  );
-  const idleResult = await axe.run(container, AXE_OPTIONS);
-  assert.deepEqual(idleResult.violations, [], idleResult.violations.map((v) => v.id).join(', '));
+const expectNoViolations = async (container: HTMLElement, label: string) => {
+  const result = await axe.run(container, AXE_OPTIONS);
+  assert.deepEqual(result.violations.map((v) => v.id), [], `${label}: axe violations`);
+};
 
-  rerender(
-    <ErrorRecovery failure={networkFailure} input="my prompt" onInputChange={() => {}} onRetry={() => {}} />,
-  );
-  const erroredResult = await axe.run(container, AXE_OPTIONS);
-  assert.deepEqual(erroredResult.violations, [], erroredResult.violations.map((v) => v.id).join(', '));
+test('axe: no WCAG A/AA violations in idle, errored, retrying, and recovered states', async () => {
+  let finishRetry!: () => void;
+  const onRetry = () => new Promise<void>((resolve) => { finishRetry = resolve; });
+  const failure: FailureInfo = { kind: 'network', message: 'ECONNRESET', detail: 'req_abc123' };
+  const { container, rerender } = render(<Host failure={null} onRetry={onRetry} />);
+  assert.equal(stateOf(container), 'idle');
+  await expectNoViolations(container, 'idle');
+
+  rerender(<Host failure={failure} onRetry={onRetry} />);
+  assert.equal(stateOf(container), 'errored');
+  await expectNoViolations(container, 'errored');
+
+  // Errored with the technical detail expanded.
+  fireEvent.click(detailToggle(container)!);
+  assert.equal(detailEl(container)!.hidden, false);
+  await expectNoViolations(container, 'errored (detail expanded)');
+
+  await act(async () => { fireEvent.click(retryBtn(container)!); });
+  assert.equal(stateOf(container), 'retrying');
+  await expectNoViolations(container, 'retrying');
+
+  // Recovered: the retry succeeded and the host cleared the failure.
+  await act(async () => { finishRetry(); });
+  rerender(<Host failure={null} onRetry={onRetry} />);
+  assert.equal(stateOf(container), 'idle');
+  assert.equal(alertEl(container).textContent, '');
+  assert.equal(inputEl(container).value, 'my draft', 'the preserved input remains');
+  await expectNoViolations(container, 'recovered');
 });

@@ -35,7 +35,9 @@ import { PromptComposer } from './react/PromptComposer';
   maxLength={4000}
   onSubmit={async (text) => {
     await send(text);
-    setDraft(''); // clear only after the submission is accepted
+    // Clear only after acceptance, and only if the user has not typed
+    // something new while the send was in flight.
+    setDraft((current) => (current === text ? '' : current));
   }}
 />
 ```
@@ -49,7 +51,9 @@ const composer = new PromptComposer({
     composer.setBusy(true);
     try {
       await send(text);
-      composer.clear(); // only on success
+      // Only on success, and only if the user has not typed something new
+      // while the send was in flight.
+      if (composer.getValue() === text) composer.clear();
     } finally {
       composer.setBusy(false);
     }
