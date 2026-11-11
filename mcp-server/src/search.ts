@@ -115,10 +115,28 @@ interface FieldHit {
   token: string;
 }
 
-/** Best (highest-weight) field of `doc` containing `token`, if any. */
+/**
+ * Word-start containment (DESIGN.md amendment 14): `token` must begin on a
+ * word boundary in `text`. Plain substring matching read "reversible"
+ * inside "irreversible" and "ask" inside "task" — the first quoted an
+ * exclusion about the opposite case, the second outranked the right
+ * pattern on an alias the query never named. The tail stays open on
+ * purpose: "confirm" still reaches "confirmation", "token" reaches
+ * "tokens" — the inflection tolerance the catalog's vocabulary relies on
+ * in place of a stemmer.
+ */
+function startsWord(text: string, token: string): boolean {
+  const haystack = text.toLowerCase();
+  for (let at = haystack.indexOf(token); at !== -1; at = haystack.indexOf(token, at + 1)) {
+    if (at === 0 || !/[a-z0-9]/.test(haystack[at - 1])) return true;
+  }
+  return false;
+}
+
+/** Best (highest-weight) field of `doc` with a word starting with `token`, if any. */
 function bestHit(doc: CorpusDoc, token: string): FieldHit | undefined {
   for (const field of FIELDS) {
-    const value = field.get(doc).find((v) => v.toLowerCase().includes(token));
+    const value = field.get(doc).find((v) => startsWord(v, token));
     if (value !== undefined) {
       return { field: field.name, weight: field.weight, value, token };
     }

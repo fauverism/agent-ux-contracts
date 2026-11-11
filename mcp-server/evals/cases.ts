@@ -143,6 +143,61 @@ export const CASES: EvalCase[] = [
     query: 'add a cancel button that actually stops the in-flight request',
     expect: { kind: 'no_caution', id: 'interruption-cancel' },
   },
+  // --- caution precision (real misses observed 2026-11-11, DESIGN.md §14) ---
+  {
+    name: 'low-risk-caution',
+    // The paraphrase of approval-gate's first exclusion must draw its caution.
+    query: 'confirm before a low-risk reversible action',
+    expect: { kind: 'caution', id: 'approval-gate' },
+  },
+  {
+    name: 'low-risk-no-noise',
+    // "reversible" is not "irreversible": streaming-response's exclusion
+    // about irreversible actions is the opposite case, not a match.
+    query: 'confirm before a low-risk reversible action',
+    expect: { kind: 'no_caution', id: 'streaming-response' },
+  },
+  {
+    name: 'low-risk-paraphrase',
+    // "low-risk" is how people say "low-stakes"; without "reversible" in
+    // the query the exclusion must still be found.
+    query: 'confirm before a low-risk action',
+    expect: { kind: 'caution', id: 'approval-gate' },
+  },
+  {
+    name: 'reversible-caution',
+    query: 'reversible action',
+    expect: { kind: 'caution', id: 'approval-gate' },
+  },
+  {
+    name: 'reversible-no-noise',
+    query: 'reversible action',
+    expect: { kind: 'no_caution', id: 'streaming-response' },
+  },
+  {
+    name: 'read-only-top',
+    // "ask" is not "task": the alias "stop task" must not outrank the
+    // pattern the query is actually about.
+    query: 'ask permission before a read-only operation',
+    expect: { kind: 'top1', id: 'approval-gate' },
+  },
+  {
+    name: 'read-only-caution',
+    query: 'ask permission before a read-only operation',
+    expect: { kind: 'caution', id: 'approval-gate' },
+  },
+  {
+    name: 'trivial-gate-caution',
+    query: 'gate a trivially reversible low-stakes action',
+    expect: { kind: 'caution', id: 'approval-gate' },
+  },
+  {
+    name: 'trivial-gate-no-noise',
+    // "gate" grazing "gated on complex validation" is one shared word, not
+    // a match for prompt-composer's exclusion.
+    query: 'gate a trivially reversible low-stakes action',
+    expect: { kind: 'no_caution', id: 'prompt-composer' },
+  },
   {
     name: 'category-filter',
     query: 'confidence',

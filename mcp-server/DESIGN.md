@@ -282,6 +282,67 @@ Approved design, adjusted where implementation proved a decision wrong:
     from the same doc.mdx the site renders. Search stays lean — the wiring
     matters at scaffold time, not while ranking candidates.
 
+### Caution precision (four real misses observed 2026-11-11)
+
+14. **Keyword matching is word-start, not substring.** A query token now
+    matches a field only where it begins a word ("-" and spaces are
+    boundaries). Substring matching read "reversible" inside
+    "irreversible" — so `reversible action` quoted streaming-response's
+    exclusion about *irreversible* actions, the opposite case, and the
+    same graze gave approval-gate a better-weighted hit ("irreversible or
+    expensive to reverse" in `useWhen`) that suppressed its real exclusion
+    under amendment 12's best-hit rule. It also read "ask" inside "task",
+    ranking interruption-cancel first on the alias "stop task" for an
+    approval query. Amendment 12's rule is unchanged; it was being fed
+    false hits. **Alternative considered:** whole-token matching (both
+    ends on a boundary). Rejected — it removes the inflection tolerance
+    the vocabulary depends on in place of a stemmer ("confirm" →
+    "confirmation gate", "token" → "token streaming"/"tokens") and
+    regressed three passing cases (typewriter, dangerous-command,
+    off-topic-graze); buying them back would mean alias churn across
+    several contracts for no gain on the reported misses.
+    Vocabulary, per the §8 convention, approval-gate →0.1.2: alias
+    +"ask permission" (the query phrasing for this pattern that no field
+    carried), and its first `dontUseWhen` now reads "low-stakes
+    (low-risk)" — the paraphrase belongs in the exclusion text itself, not
+    in `aliases`/`tags`, which would advertise the pattern *for* low-risk
+    actions. Non-normative wording, so a patch bump.
+    New cases: low-risk-caution, low-risk-paraphrase, reversible-caution,
+    read-only-top, read-only-caution, trivial-gate-caution (passing), and
+    three no-noise cases that amendment 15 is needed for.
+
+15. **PROPOSED — not implemented, awaiting owner review: a caution needs
+    one full unit of evidence.** After 14, three cases still fail, all the
+    same shape: one common query word whose only home in a pattern is an
+    exclusion. "action" starts "irreversible *actions*"
+    (streaming-response), "recovery *action*" (error-recovery),
+    "*actionable* recourse" (confidence-indicator); "gate" starts "*gated*
+    on complex validation" (prompt-composer). Amendment 12's rule passes
+    each of these — the token's best hit really is the exclusion — but one
+    shared word is not "your case is excluded".
+    **Decision proposed:** keep amendment 12's rule, and additionally sum
+    1/df over the query tokens whose best hit is the *same* `dontUseWhen`
+    entry; fire the caution only when that sum is ≥ 1. One token unique to
+    that pattern in the catalog qualifies on its own ("read-only",
+    "low-risk", "reversible" — df 1); a token shared by five patterns
+    ("action", 0.2) or two ("gate", 0.5) does not, unless other tokens
+    land on the same entry. It reuses the df already computed for scoring
+    (amendment 6), so there is no new tunable beyond the threshold, and it
+    scales with the catalog the same way. When the best-ranked field is
+    exclusion text but no caution fires, the rationale stops saying "see
+    caution" (it does today for `guidance.dont` hits, pointing at a field
+    that is absent).
+    **Alternatives considered:** (a) require two tokens on the same entry
+    — simpler to state, but it silences "read-only dashboard", where one
+    rare word is the whole signal; (b) add "action"/"gate" to stopwords —
+    they are real signal for approval-gate's name and aliases; (c) fix by
+    vocabulary — there is no alias that makes "action" stop matching
+    "recovery action" without mislabeling error-recovery.
+    **Why:** same argument as 12 — every false caution teaches agents to
+    ignore the field. Prototyped against the scorecard: 32/32, cautions on
+    the four reported queries land on approval-gate only, and the existing
+    dont-use-caution and no-false-caution cases hold.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

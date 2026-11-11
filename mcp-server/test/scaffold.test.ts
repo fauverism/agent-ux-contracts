@@ -44,7 +44,7 @@ test('determinism: same input produces byte-identical output', () => {
 test('response shape: version, hash, constraints array, and roles are present', () => {
   const result = scaffoldPattern(catalog, 'approval-gate', 'react');
   assert.equal(result.pattern_id, 'approval-gate');
-  assert.equal(result.version, '0.1.1');
+  assert.equal(result.version, '0.1.2');
   assert.match(result.contract_hash, /^[0-9a-f]{64}$/);
   assert.ok(result.constraints.length > 0, 'full constraints array included');
   assert.deepEqual(
