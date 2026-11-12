@@ -29,6 +29,10 @@ export class ApprovalGate {
   constructor(options) {
     this.options = options;
     this.status = 'proposed';
+    // Captured at mount: the string rendered in the preview is the string
+    // passed to onApprove, even if `options` is mutated afterwards
+    // (constraint: accurate-preview).
+    this.previewedPayload = null;
     this.root = null;
     this.statusEl = null;
     this.outcomeEl = null;
@@ -84,7 +88,8 @@ export class ApprovalGate {
     detail.id = detailId;
     detail.className = 'approval-gate__detail';
     detail.hidden = true;
-    detail.textContent = payload;
+    this.previewedPayload = payload;
+    detail.textContent = this.previewedPayload;
 
     detailToggle.addEventListener('click', () => {
       detail.hidden = !detail.hidden;
@@ -140,7 +145,7 @@ export class ApprovalGate {
     try {
       // The previewed payload is what the approve handler receives
       // (constraint: accurate-preview).
-      await this.options.onApprove(this.options.payload);
+      await this.options.onApprove(this.previewedPayload);
       this.setStatus('completed');
     } catch {
       this.setStatus('failed');

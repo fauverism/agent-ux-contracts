@@ -133,8 +133,13 @@ export class InterruptionCancel {
     this.root.append(this.wrapper);
   }
 
-  /** Begins (or restarts) a run. */
+  /**
+   * Begins (or restarts) a run. Ignored while a cancellation is pending:
+   * cancel-requested settles only through finish(), never back to running
+   * (constraint: no-silent-continuation).
+   */
   start() {
+    if (this.phase === 'cancel-requested') return;
     this.phase = 'running';
     this.cancelWasRequested = false;
     this.progressEl.hidden = true;
@@ -213,7 +218,11 @@ export class InterruptionCancel {
     );
     this.summaryEl.hidden = false;
 
-    this.liveRegion.textContent = WORK_ANNOUNCEMENTS[this.phase];
+    // A raced completion says so to assistive technology too, not only
+    // visually (constraint: completion-race-honest).
+    this.liveRegion.textContent = raced
+      ? `${WORK_ANNOUNCEMENTS.completed} ${RACE_DISCLOSURE}`
+      : WORK_ANNOUNCEMENTS[this.phase];
   }
 
   #fillList(labelEl, listEl, items) {

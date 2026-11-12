@@ -45,7 +45,7 @@ export default function About() {
           </li>
           <li>
             Reference implementations in React and vanilla JS, each with a
-            COMPLIANCE.md mapping constraint to test. 242 tests run on every
+            COMPLIANCE.md mapping constraint to test. 369 tests run on every
             change.
           </li>
           <li>

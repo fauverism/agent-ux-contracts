@@ -282,6 +282,17 @@ Approved design, adjusted where implementation proved a decision wrong:
     from the same doc.mdx the site renders. Search stays lean — the wiring
     matters at scaffold time, not while ranking candidates.
 
+14. **Vanilla scaffolds now depend on `axe-core` (2026-11-11 proof audit).**
+    The vanilla reference tests run axe in every implemented state, as the
+    React ones always did, so `verify.dependencies` for vanilla is
+    `axe-core`, `jsdom`, `global-jsdom`. *Alternative:* keep axe out of the
+    vanilla suites to preserve the two-dependency footprint. *Why not:* the
+    contracts' accessibility verification says "axe", and a scaffold whose
+    shipped tests skip it proves less than the catalog claims. The same
+    audit moved the `accurate-preview` vanilla anchor to
+    `onApprove(this.previewedPayload)` (the payload is now captured at
+    mount).
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

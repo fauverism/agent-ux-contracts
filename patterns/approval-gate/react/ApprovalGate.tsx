@@ -44,8 +44,12 @@ export function ApprovalGate({
 
   // Announce arrival after mount: live regions announce *changes*, so the
   // text must be set post-render to be heard (constraint: gate-announced).
+  // Only while the gate is still pending: a summary change after a decision
+  // must not re-announce an approval that no longer exists.
   useEffect(() => {
+    if (status !== 'proposed') return;
     setAnnouncement(`${GATE_ANNOUNCEMENTS.proposed}: ${summary}`);
+    // Keyed on summary alone: status is read here, not subscribed to.
   }, [summary]);
 
   // The ONLY path to onApprove is this handler, reached by explicit
