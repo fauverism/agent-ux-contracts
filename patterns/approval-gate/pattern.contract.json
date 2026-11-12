@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "approval-gate",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Approval Gate",
   "summary": "Require explicit, informed user consent before an agent executes a consequential action, with an accurate preview of exactly what will run.",
   "status": "draft",
@@ -27,9 +27,9 @@
     "Accountability requires a human decision on record before execution"
   ],
   "dontUseWhen": [
-    "The action is trivially reversible and low-stakes, where gating adds fatigue without safety",
-    "The user has durably delegated this action class and revocation is available elsewhere",
-    "Read-only operations with no side effects are involved"
+    "The action is trivially reversible and low-stakes or low-risk — a toggle or setting the user can undo in one click — where gating adds fatigue without safety",
+    "The user has durably delegated this action class — already granted standing permission — and revocation is available elsewhere",
+    "Read-only operations with no side effects are involved: the agent only reads a file, searches, or fetches"
   ],
   "anatomy": [
     {

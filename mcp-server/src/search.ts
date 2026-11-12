@@ -28,10 +28,59 @@ interface CorpusDoc {
   useWhen: string[];
   anatomyText: string[];
   dontText: string[];
+  /** The contract's dontUseWhen entries, each with its word index (cautions). */
+  exclusions: Array<{ text: string; words: string[] }>;
+  /** Words that name the pattern: id, name, aliases, tags. */
+  identityWords: string[];
+  /** Words of every searchable field, for document frequency. */
+  allWords: string[];
   pattern: LoadedPattern;
 }
 
+/**
+ * Words of a text, lowercased. A hyphenated compound yields the compound and
+ * its parts ("read-only" → read-only, read, only), so a query can use either.
+ */
+function wordsOf(text: string): string[] {
+  const out: string[] = [];
+  for (const compound of text.toLowerCase().split(/[^a-z0-9-]+/)) {
+    if (!compound) continue;
+    out.push(compound);
+    if (compound.includes('-')) out.push(...compound.split('-').filter(Boolean));
+  }
+  return out;
+}
+
+/**
+ * Ranking match: a token matches a text when some word *starts with* it.
+ * This replaced a raw substring test (DESIGN.md amendment 17): "ask" no
+ * longer matches "task" and "reversible" no longer matches "irreversible",
+ * while "fail" still reaches "failure" and "confirm" reaches "confirmation".
+ * It is not a stemmer — "failed" still does not match "failure".
+ */
+function matchesWords(words: string[], token: string): boolean {
+  return words.some((w) => w.startsWith(token));
+}
+
+/**
+ * Caution match: the same rule, but the word may run at most an inflection's
+ * length past the token. A caution is a warning, so its evidence is held to
+ * a tighter standard than ranking: "cost" reaches "costs", but "sign" does
+ * not reach "significant" and "else" does not reach "elsewhere".
+ */
+const MAX_INFLECTION = 3;
+function inflects(words: string[], token: string): boolean {
+  return words.some((w) => w.startsWith(token) && w.length - token.length <= MAX_INFLECTION);
+}
+
 function toDoc(pattern: LoadedPattern): CorpusDoc {
+  const c = pattern.contract;
+  const doc = buildDoc(pattern);
+  doc.allWords = FIELDS.flatMap((f) => f.get(doc)).flatMap(wordsOf);
+  return doc;
+}
+
+function buildDoc(pattern: LoadedPattern): CorpusDoc {
   const c = pattern.contract;
   return {
     id: c.id,
@@ -43,6 +92,9 @@ function toDoc(pattern: LoadedPattern): CorpusDoc {
     useWhen: c.useWhen,
     anatomyText: (c.anatomy ?? []).map((a) => a.description),
     dontText: [...c.dontUseWhen, ...(c.guidance?.dont ?? [])],
+    exclusions: c.dontUseWhen.map((text) => ({ text, words: wordsOf(text) })),
+    identityWords: [c.id, c.name, ...(c.aliases ?? []), ...(c.tags ?? [])].flatMap(wordsOf),
+    allWords: [],
     pattern,
   };
 }
@@ -118,7 +170,7 @@ interface FieldHit {
 /** Best (highest-weight) field of `doc` containing `token`, if any. */
 function bestHit(doc: CorpusDoc, token: string): FieldHit | undefined {
   for (const field of FIELDS) {
-    const value = field.get(doc).find((v) => v.toLowerCase().includes(token));
+    const value = field.get(doc).find((v) => matchesWords(wordsOf(v), token));
     if (value !== undefined) {
       return { field: field.name, weight: field.weight, value, token };
     }
@@ -126,11 +178,80 @@ function bestHit(doc: CorpusDoc, token: string): FieldHit | undefined {
   return undefined;
 }
 
+/**
+ * Minimum evidence for a caution: the summed rarity (1/df) of the query
+ * words that point at one exclusion. Two words found in only two patterns
+ * each reach it; two words found in half the catalog do not.
+ */
+export const CAUTION_EVIDENCE = 0.75;
+
+/**
+ * Is this query word one of the words that name the pattern? Checked in both
+ * directions so an inflection of a naming word still counts as naming it
+ * ("declined" against the alias "decline message").
+ */
+function namesPattern(doc: CorpusDoc, token: string): boolean {
+  return doc.identityWords.some(
+    (w) => w.startsWith(token) || (w.length >= 4 && token.startsWith(w)),
+  );
+}
+
+/**
+ * Function words that pass the length filter but say nothing about a
+ * situation. Used only when weighing caution evidence, where a rare-looking
+ * "there" or "own" would otherwise count as a clue.
+ */
+const CAUTION_NOISE = new Set([
+  'are', 'was', 'were', 'has', 'have', 'had', 'its', 'own', 'any', 'all', 'but',
+  'than', 'then', 'there', 'their', 'they', 'them', 'our', 'you', 'your', 'will',
+  'would', 'could', 'does', 'doesn', 'don', 'didn', 'isn', 'aren', 'won', 'did',
+  'get', 'gets', 'got', 'use', 'used', 'using', 'add', 'adds', 'only', 'even',
+  'every', 'each', 'some', 'such', 'while', 'because', 'before', 'after',
+  'through', 'without', 'within', 'over', 'under', 'between', 'during', 'until',
+  'still', 'also', 'too', 'many', 'more', 'most', 'much', 'very', 'always',
+  'never', 'anyway',
+]);
+
+/**
+ * Does the query describe one of this pattern's dontUseWhen cases?
+ * (DESIGN.md amendment 17.) Evidence is counted per exclusion entry, from
+ * query words that appear in that entry and do not name the pattern — a
+ * word shared with the id, name, aliases or tags is about the pattern, not
+ * about the exclusion ("cancel" in "a cancel control could never be reached
+ * in time"). One shared word is never enough: a caution needs at least two,
+ * and enough combined rarity (1/df each) that the overlap is not everyday
+ * vocabulary. The entry with the most evidence is the one quoted.
+ */
+function cautionFor(doc: CorpusDoc, queryWords: string[], docs: CorpusDoc[]): string | undefined {
+  let best: { text: string; evidence: number } | undefined;
+  for (const exclusion of doc.exclusions) {
+    const pointing = queryWords.filter(
+      (t) =>
+        !CAUTION_NOISE.has(t) &&
+        inflects(exclusion.words, t) &&
+        !namesPattern(doc, t),
+    );
+    if (pointing.length < 2) continue;
+    const evidence = pointing.reduce(
+      (sum, t) => sum + 1 / docs.filter((d) => inflects(d.allWords, t)).length,
+      0,
+    );
+    if (evidence >= CAUTION_EVIDENCE && (!best || evidence > best.evidence)) {
+      best = { text: exclusion.text, evidence };
+    }
+  }
+  return best
+    ? `Your query matches this pattern's don't-use-when: "${excerpt(best.text)}" — it may explicitly exclude your case.`
+    : undefined;
+}
+
 export class LexicalSearchProvider implements SearchProvider {
   rank(query: string, corpus: LoadedPattern[]): ScoredResult[] {
     const docs = corpus.map(toDoc);
     const tokens = tokenize(query);
     if (tokens.length === 0) return [];
+    // Caution matching sees hyphenated compounds and their parts.
+    const queryWords = [...new Set(tokens.flatMap(wordsOf).filter((t) => t.length >= 3 && !STOPWORDS.has(t)))];
 
     // Document frequency per token. Tokens matching most of the corpus
     // ("user", "one") carry no signal and are dropped; rare tokens count
@@ -185,21 +306,7 @@ export class LexicalSearchProvider implements SearchProvider {
             FIELD_PRIORITY.indexOf(a.field) - FIELD_PRIORITY.indexOf(b.field),
         )[0];
 
-        // Caution only when a token's *best* hit is the exclusion text and
-        // that text is a real dontUseWhen entry. A token that also matches
-        // the pattern's name or aliases is about the pattern, not the
-        // exclusion ("cancel" grazing "a cancel control could never be
-        // reached in time" is not a warning), and guidance.dont lines are
-        // implementation advice, not exclusions — quoting them as
-        // don't-use-when mislabels their provenance.
-        const dontHit = hits.find(
-          (h) =>
-            h.field === 'dontText' &&
-            doc.pattern.contract.dontUseWhen.includes(h.value),
-        );
-        const caution = dontHit
-          ? `Your query matches this pattern's don't-use-when: "${excerpt(dontHit.value)}" — it may explicitly exclude your case.`
-          : undefined;
+        const caution = cautionFor(doc, queryWords, docs);
 
         scored.push({
           pattern: doc.pattern,

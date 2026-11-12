@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "source-attribution",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "name": "Source Attribution",
   "summary": "Link generated content back to its sources—retrieved documents, web pages, citations—so users can verify claims and judge reliability.",
   "status": "draft",
@@ -26,9 +26,9 @@
     "The sources are publicly accessible and verifiable"
   ],
   "dontUseWhen": [
-    "Sources are proprietary, internal, or cannot be shared",
-    "The response is pure reasoning or generation with no retrieval component",
-    "Source links would be overwhelming or distract from the response"
+    "Sources are proprietary, internal, or cannot be shared — confidential documents or data you cannot share with users",
+    "The response is pure reasoning or generation with no retrieval component — no RAG; the model writes from its own knowledge",
+    "Source links would be overwhelming or distract from the response — too many would clutter the answer"
   ],
   "anatomy": [
     {

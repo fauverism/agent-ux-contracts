@@ -82,7 +82,7 @@ test('success message #2: the real search_patterns result is shown verbatim', ()
   assert.match(text, /streaming-response/, 'ranks the right pattern');
   assert.match(text, /0\.756/, 'real relevance score');
   assert.match(text, /Alias match/, 'the explainable rationale');
-  assert.match(text, /"version": "0\.2\.1"/, 'pinnable version');
+  assert.match(text, /"version": "0\.2\.2"/, 'pinnable version');
 
   for (const mustId of [
     'no-focus-steal',

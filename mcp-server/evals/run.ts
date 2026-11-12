@@ -70,6 +70,41 @@ function runCase(c: EvalCase): CaseResult {
             : `${c.expect.id} not in results: ${got}`,
       };
     }
+    case 'caution_only': {
+      const { id, quotes } = c.expect;
+      const result = outcome.results.find((r) => r.pattern.contract.id === id);
+      const others = outcome.results
+        .filter((r) => r.pattern.contract.id !== id && r.caution)
+        .map((r) => r.pattern.contract.id);
+      const quoted = !quotes || Boolean(result?.caution?.includes(quotes));
+      const pass = Boolean(result?.caution) && quoted && others.length === 0;
+      return {
+        pass,
+        detail: pass
+          ? `${id} cautioned, no other caution`
+          : !result
+            ? `${id} not in results: ${got}`
+            : !result.caution
+              ? `${id} returned without caution`
+              : !quoted
+                ? `${id} cautioned but did not quote "${quotes}": ${result.caution}`
+                : `unwanted caution on ${others.join(', ')}`,
+      };
+    }
+    case 'no_cautions': {
+      const cautioned = outcome.results
+        .filter((r) => r.caution)
+        .map((r) => r.pattern.contract.id);
+      const pass = outcome.results.length > 0 && cautioned.length === 0;
+      return {
+        pass,
+        detail: pass
+          ? 'no result carries a caution'
+          : outcome.results.length === 0
+            ? 'expected results, got none'
+            : `unwanted caution on ${cautioned.join(', ')}`,
+      };
+    }
     case 'advisory': {
       const pass = outcome.results.length > 0 && Boolean(outcome.advisory);
       return {

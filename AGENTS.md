@@ -183,9 +183,15 @@ if behavior moved, and update the impls' trace headers.
   every test fails.** A test that runs another test suite as a child process
   must strip that variable from the child's environment (see `nestedTestEnv`
   in `mcp-server/test/scaffold.test.ts`), or it can never fail.
-- **Substring search has no stemmer.** "failed" doesn't match "failure". v1
-  closes these gaps with contract `aliases` (which double as documentation), not
-  a stemmer. Add the alias.
+- **Search matches at word starts and has no stemmer.** A query word matches a
+  contract word that starts with it: "fail" reaches "failure", "failed" does
+  not, and "ask" no longer matches "task". v1 closes these gaps with contract
+  `aliases` (which double as documentation), not a stemmer. Add the alias.
+- **Exclusion vocabulary lives in `dontUseWhen`, not in `aliases` or `tags`.**
+  A word in an alias or tag names the pattern, so it raises the pattern's rank
+  and is ignored as caution evidence. To make a caution reach a phrasing,
+  extend the wording of the `dontUseWhen` entry it belongs to (patch bump) and
+  add the query to `mcp-server/evals/cases.ts` (DESIGN.md amendment 17).
 - **The RSS feed reads per-item `pubDate` from git history**
   (`site/app/feed.xml/route.ts`) and omits dates it cannot find. A shallow
   clone builds a feed with missing dates; build from a full clone.

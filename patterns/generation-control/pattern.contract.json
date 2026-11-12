@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "generation-control",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Generation Control",
   "summary": "Give users explicit control over generated output — regenerate, browse variants, refine — without ever silently destroying a result they might have wanted.",
   "status": "draft",
@@ -15,8 +15,8 @@
     "Small instruction tweaks should refine output without rebuilding the whole prompt"
   ],
   "dontUseWhen": [
-    "Output is deterministic, where regenerate would produce the identical result",
-    "Each generation has significant cost or side effects and iteration should be deliberate rather than one click away",
+    "Output is deterministic — temperature zero, the same prompt always returns the same answer — where regenerate would produce the identical result",
+    "Each generation has significant cost or side effects — every run costs real money — and iteration should be deliberate rather than one click away",
     "The flow requires exactly one canonical result and alternatives would create ambiguity about which is authoritative"
   ],
   "anatomy": [

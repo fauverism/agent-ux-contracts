@@ -63,7 +63,7 @@ function ModePanel({ mode }: { mode: 'light' | 'dark' }) {
       </div>
       <p className="mt-4 font-mono text-sm">
         <PatternID id="streaming-response" />{' '}
-        <span className="text-ink-45">v0.2.1 · output</span>
+        <span className="text-ink-45">v0.2.2 · output</span>
       </p>
       <p className="mt-2 font-text">
         Links are ink,{' '}

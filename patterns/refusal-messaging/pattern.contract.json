@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "refusal-messaging",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Refusal Messaging",
   "summary": "Present a model's refusal as a response, not an error: what was declined, why in plain language, and at least one forward path related to what the user wanted.",
   "status": "draft",
@@ -26,8 +26,8 @@
     "False-positive refusals are possible and the presentation must preserve the user's dignity"
   ],
   "dontUseWhen": [
-    "The failure is technical, not policy — error-recovery owns timeouts, overloads, and tool errors",
-    "The governing policy forbids disclosing why the request was declined, so the pattern's core promise of a reason cannot be kept",
+    "The failure is technical, not policy: the request failed on a timeout, an overloaded or unavailable server, or a tool error — error-recovery owns those",
+    "The governing policy forbids disclosing why the request was declined — you are not allowed to disclose the reason — so the pattern's core promise of a reason cannot be kept",
     "The 'refusal' is actually a capability gap — say the feature does not exist instead of dressing it as policy"
   ],
   "anatomy": [

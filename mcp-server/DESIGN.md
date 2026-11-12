@@ -330,6 +330,54 @@ Approved design, adjusted where implementation proved a decision wrong:
     exit code is the contract a receiver's CI relies on, so the test should
     rely on it too.
 
+17. **Cautions need evidence for one exclusion, and exclusion vocabulary
+    lives in the exclusion text (2026-11-12, NORTH-STAR gap 8).** Supersedes
+    the firing rule in amendment 12. *Measured first:* 100 queries over
+    stdio, five describing an excluded case and five in scope for each
+    pattern. The old rule (any one query token whose best substring hit was
+    a `dontUseWhen` entry) drew the right caution on 31 of 50 excluded-case
+    queries, quoted the wrong exclusion on 2, missed 17, and put a caution on
+    a pattern the query was not about in 46 of the 100.
+    *Vocabulary first.* The misses were wording gaps, but `aliases` and
+    `tags` cannot hold exclusion wording: they name the pattern, so a word
+    placed there raises the pattern's rank and stops counting as a warning.
+    The paraphrase vocabulary went into the `dontUseWhen` entries themselves
+    as clarifying clauses (nine contracts, patch bumps). That alone cut
+    misses to 2 and raised stray cautions to 67 of 100 — more words, same
+    one-word trigger.
+    *Then the rule.* A caution now needs, for a single exclusion entry, at
+    least two query words that appear in that entry and do not name the
+    pattern, with combined rarity (Σ 1/df) of at least `CAUTION_EVIDENCE`.
+    Function words are ignored. The entry with the most evidence is quoted.
+    Matching is at word starts, not anywhere in a word ("ask" ≠ "task",
+    "reversible" ≠ "irreversible"); for caution evidence the word may run at
+    most three letters past the token ("sign" ≠ "significant"). Ranking uses
+    the same word-start rule without the length bound, which also fixes
+    `ask permission before a read-only operation` ranking interruption-cancel
+    first. streaming-response gained the alias "typewriter effect" when the
+    stricter matching changed one ranking case.
+    *Result on the same 100:* 49 right, 0 wrong exclusion, 1 miss, 0 false
+    alarms, 2 queries with a caution on another pattern (one of them
+    defensible: a failed-request query cautions refusal-messaging with "the
+    failure is technical, not policy").
+    *Holdout, written after tuning and not tuned against:* 60 fresh queries.
+    Before: 7 of 30 right, 3 wrong exclusion, 20 missed, 2 false alarms, a
+    stray caution on 26 of 60. After: 3 of 30 right, 27 missed, no false
+    alarm, a stray caution on 1 of 60. So the change buys precision, not
+    recall: a caution that fires can now be believed, and a paraphrase that
+    shares no words with the contract still draws nothing.
+    *Alternatives:* (a) a schema field for exclusion aliases — new contract
+    surface for what clearer exclusion prose already does; (b) keep the
+    one-word trigger and extend stopwords — the false cautions come from
+    ordinary content words, not filler; (c) a stemmer — still deferred, and
+    it would not reach paraphrase; (d) embeddings — the real fix for recall,
+    deferred to v1.1 behind `SearchProvider`. *Why this:* false cautions
+    train agents to skip the field (amendment 12), so precision comes first;
+    recall then grows by harvesting real misses into contract wording, which
+    doubles as documentation. The fuzzy (typo) pass keeps its own rule.
+    Gate: 56 cases added to `evals/cases.ts` with two new expectation kinds,
+    `caution_only` and `no_cautions`.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

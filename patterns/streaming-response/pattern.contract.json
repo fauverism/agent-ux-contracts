@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "streaming-response",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "name": "Streaming Response",
   "summary": "Render model output progressively as tokens arrive, keeping the page readable, interruptible, and accessible while content is in flight.",
   "status": "draft",
@@ -10,6 +10,7 @@
     "progressive response",
     "token streaming",
     "typewriter output",
+    "typewriter effect",
     "AI loading state"
   ],
   "tags": [
@@ -25,8 +26,8 @@
     "Generation can be stopped midway and the partial result still has value"
   ],
   "dontUseWhen": [
-    "Output must be validated, moderated, or post-processed in full before any of it is shown",
-    "Responses are short and fast enough that progressive rendering adds motion without value",
+    "Output must be validated, moderated, or post-processed in full before any of it is shown — for example, the whole reply runs through a safety filter before the user sees anything",
+    "Responses are short and fast enough — they come back almost instantly, or are answers of one sentence that take a few hundred milliseconds — that progressive rendering adds motion without value",
     "The output drives irreversible actions that must not execute from a partial result"
   ],
   "anatomy": [
