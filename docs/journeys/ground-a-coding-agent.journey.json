@@ -1,7 +1,7 @@
 {
   "$schema": "./journey.schema.json",
   "id": "ground-a-coding-agent",
-  "revised": "2026-11-11",
+  "revised": "2026-11-12",
   "title": "Ground a coding agent: find, scaffold, verify, pin",
   "summary": "A UX engineer asks their coding agent for an AI interface feature. The agent finds the right pattern in product language, scaffolds a compliant implementation with its tests, proves it in the engineer's own project, and records which contract version the code satisfies.",
   "status": "partial",
@@ -95,8 +95,7 @@
       "action": "Run the verify command exactly as returned, from the directory the files were written to.",
       "uses": { "kind": "command", "run": "cd src/patterns/interruption-cancel && <verify.command>" },
       "expect": "Every test passes on the first run.",
-      "available": true,
-      "gap": "verify-needs-react-jsx"
+      "available": true
     },
     {
       "id": "s8",
@@ -155,14 +154,6 @@
     }
   ],
   "gaps": [
-    {
-      "id": "verify-needs-react-jsx",
-      "summary": "The returned verify command fails every test unless the consumer's tsconfig sets jsx to react-jsx, and the tool response does not say so.",
-      "evidence": "Baseline run: 13 of 13 tests fail with \"React is not defined\" when the project has no tsconfig, and again with \"jsx\": \"preserve\". 13 of 13 pass with \"jsx\": \"react-jsx\". See docs/journeys/runs/2026-11-11-baseline.md.",
-      "fix": "Make verification hermetic: return a tsconfig.json alongside the scaffolded files so tsx resolves it from the pattern directory, or state the requirement inside verify.",
-      "scope": "in-scope",
-      "size": "S"
-    },
     {
       "id": "clone-only-install",
       "summary": "The MCP server can only be installed by cloning the repository, building it, and registering an absolute path.",

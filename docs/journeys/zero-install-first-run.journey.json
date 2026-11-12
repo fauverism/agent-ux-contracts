@@ -1,7 +1,7 @@
 {
   "$schema": "./journey.schema.json",
   "id": "zero-install-first-run",
-  "revised": "2026-11-11",
+  "revised": "2026-11-12",
   "title": "Zero-install first run: a stranger gets to green tests in five minutes",
   "summary": "Someone who has never seen the catalog lands on a pattern page, copies one line, and has a compliant, tested component in their own project. This is the experience the alternatives already offer and this product does not.",
   "status": "not-built",
@@ -105,9 +105,9 @@
     },
     {
       "id": "verify-needs-react-jsx",
-      "summary": "The returned verify command fails every test unless the consumer's tsconfig sets jsx to react-jsx, and the tool response does not say so.",
-      "evidence": "Baseline run of ground-a-coding-agent: 13 of 13 tests fail under \"jsx\": \"preserve\".",
-      "fix": "Make verification hermetic, as described in the ground-a-coding-agent journey.",
+      "summary": "Reference files copied straight from patterns/<id>/react fail every test unless the consumer's tsconfig sets jsx to react-jsx. Files returned by scaffold_pattern no longer do: they carry per-file JSX pragmas (mcp-server/DESIGN.md amendment 15, 2026-11-12).",
+      "evidence": "Baseline run of ground-a-coding-agent: 13 of 13 tests fail under \"jsx\": \"preserve\". The adoption section on each pattern page copies the reference directory, which has no pragmas.",
+      "fix": "Have the one-line install deliver the scaffold output rather than the raw reference files, or add the same pragmas to the reference files.",
       "scope": "in-scope",
       "size": "S"
     },

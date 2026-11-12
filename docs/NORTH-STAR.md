@@ -104,9 +104,16 @@ the launch view. The full list, with evidence per use case, is the gap index:
 | 4 | **The subscribe form posts to an unclaimed Buttondown username.** | `BUTTONDOWN_USERNAME` in `site/lib/site.ts` | Launch blocker |
 | 5 | **The 90-second demo is scripted but not recorded.** | `mcp-server/DEMO.md` | Launch asset |
 | 6 | **No real usage signal.** The search evals are authored, not harvested from real agent queries. | `mcp-server/evals/cases.ts` | Learning gap |
-| 7 | **The first run fails in a Next.js-style project.** The scaffold's verify command fails every test unless the consumer's `tsconfig` sets `jsx` to `react-jsx`. | [Baseline run](journeys/runs/2026-11-11-baseline.md) | Defect, in scope |
 | 8 | **The "don't use this here" warning is unreliable.** It misses paraphrases and fires on substrings. This is the capability no neighbor has. | [Baseline run](journeys/runs/2026-11-11-baseline.md) | Defect, in scope |
 | 9 | **Some proof is thinner than it reads.** At least one accessibility test is named for a rule it only partly proves. The `contract-auditor` has not been run across the catalog. | [Baseline run](journeys/runs/2026-11-11-baseline.md) | Defect, in scope |
+
+Closed on 2026-11-12: gap 7, the scaffold's verify command failing every test
+unless the consumer's `tsconfig` set `jsx` to `react-jsx`. Scaffolded React
+files now pin the JSX runtime per file
+([`mcp-server/DESIGN.md`](../mcp-server/DESIGN.md), amendment 15). Reference
+files copied by hand from `patterns/<id>/react` still need `react-jsx`; that
+remainder is tracked in the `zero-install-first-run` journey. The numbers of
+the other gaps are unchanged.
 
 Closed on 2026-11-11: there was no CI despite the docs calling the check gate
 "CI" (now `.github/workflows/check.yml`), and `AGENTS.md` was not being loaded
@@ -149,7 +156,7 @@ rather than assume.
 In order. Stop at the first rule that answers the question.
 
 1. Is the gate red? Fix that.
-2. Is something a stranger would hit broken (gaps 1 to 4, and 7)? Fix that
+2. Is something a stranger would hit broken (gaps 1 to 4)? Fix that
    before building anything new.
 3. Is a journey that claims `works-today` failing, or did a run find a defect
    in something that exists (gaps 8 and 9)? Fix that next.

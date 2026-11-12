@@ -26,6 +26,17 @@ after(() => {
   rmSync(tmpRoot, { recursive: true, force: true });
 });
 
+/**
+ * Environment for a nested `node --test` run. node:test marks its children
+ * with NODE_TEST_CONTEXT; a nested runner that inherits it reports to a
+ * parent that is not listening and exits 0 even when every test fails. Strip
+ * it, or an executed-suite assertion can never fail.
+ */
+const nestedTestEnv = (): NodeJS.ProcessEnv => {
+  const { NODE_TEST_CONTEXT: _inherited, ...env } = process.env;
+  return env;
+};
+
 const writeCase = (name: string, result: ScaffoldResult): string => {
   const dir = join(tmpRoot, name);
   mkdirSync(dir, { recursive: true });
@@ -323,8 +334,41 @@ test('generated tests pass for the tokenBatching variant (behavior, not just syn
   execFileSync(
     process.execPath,
     ['--import', 'tsx', '--import', join(dir, 'setup-dom.mjs'), '--test', testFile],
-    { cwd: repoRoot, stdio: 'pipe' },
+    { cwd: repoRoot, stdio: 'pipe', env: nestedTestEnv() },
   );
+});
+
+test('verify loop: React files pin the automatic JSX runtime; vanilla files are untouched', () => {
+  const react = scaffoldPattern(catalog, 'streaming-response', 'react');
+  for (const role of ['component', 'test'] as const) {
+    const file = react.files.find((f) => f.role === role)!;
+    assert.ok(
+      file.content.startsWith('/** @jsxRuntime automatic */\n/** @jsxImportSource react */\n'),
+      `${file.path} starts with the JSX pragmas`,
+    );
+  }
+  const vanilla = scaffoldPattern(catalog, 'streaming-response', 'vanilla');
+  assert.ok(vanilla.files.every((f) => !f.content.includes('@jsxRuntime')));
+});
+
+test('verify loop: the React verify command passes whatever the receiver tsconfig says about JSX', () => {
+  // tsx reads tsconfig.json from the working directory. Each of these modes
+  // made every scaffolded test fail with "React is not defined" before the
+  // pragmas (NORTH-STAR gap 7); "react-jsx" is the control.
+  const result = scaffoldPattern(catalog, 'streaming-response', 'react');
+  const [bin, ...args] = result.verify!.command.split(' ');
+  assert.equal(bin, 'node');
+  for (const jsx of ['react-jsx', 'preserve', 'react']) {
+    const dir = writeCase(`react-verify-${jsx}`, result);
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ type: 'module' }));
+    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { jsx } }));
+    try {
+      execFileSync(process.execPath, args, { cwd: dir, stdio: 'pipe', env: nestedTestEnv() });
+    } catch (err) {
+      const out = (err as { stdout?: Buffer }).stdout?.toString() ?? String(err);
+      assert.fail(`verify command failed with "jsx": "${jsx}":\n${out.slice(-1500)}`);
+    }
+  }
 });
 
 function catalogIds(): string[] {

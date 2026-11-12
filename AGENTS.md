@@ -173,9 +173,16 @@ if behavior moved, and update the impls' trace headers.
   production build clobbers the dev server's chunks and you get "Application
   error" / `MODULE_NOT_FOUND` in dev. Stop dev first; if it's already corrupted,
   `rm -rf site/.next` and restart dev.
-- **`tsx` reads `tsconfig.json` from the current working directory.** A consumer
-  project running scaffolded tests needs `"jsx": "react-jsx"` in its own
-  `tsconfig`, or JSX falls back to classic and "React is not defined" appears.
+- **`tsx` reads `tsconfig.json` from the current working directory.** With
+  `"jsx": "preserve"`, `"react"`, or no tsconfig, JSX compiles to
+  `React.createElement` and "React is not defined" appears. Scaffolded React
+  files carry per-file JSX pragmas so they are immune (DESIGN.md amendment 15).
+  Reference files copied straight from `patterns/<id>/react` are not: that
+  consumer still needs `"jsx": "react-jsx"` in its own `tsconfig`.
+- **A nested `node --test` inherits `NODE_TEST_CONTEXT` and exits 0 even when
+  every test fails.** A test that runs another test suite as a child process
+  must strip that variable from the child's environment (see `nestedTestEnv`
+  in `mcp-server/test/scaffold.test.ts`), or it can never fail.
 - **Substring search has no stemmer.** "failed" doesn't match "failure". v1
   closes these gaps with contract `aliases` (which double as documentation), not
   a stemmer. Add the alias.
