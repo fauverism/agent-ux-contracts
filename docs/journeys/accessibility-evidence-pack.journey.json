@@ -1,0 +1,166 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "accessibility-evidence-pack",
+  "revised": "2026-11-11",
+  "title": "Accessibility evidence pack: the audit trail ships with the pattern",
+  "summary": "An agent assembles, for an AI feature built on a pattern, a table of the WCAG criteria in play, the rule that addresses each, the test that proves the rule, today's result, and the checks a human still has to do.",
+  "status": "partial",
+  "persona": {
+    "role": "Engineer preparing an AI feature for an accessibility review",
+    "context": "An enterprise customer's procurement asks how the approval step meets WCAG. The honest answer today is a day of archaeology through the component and its tests.",
+    "goal": "An evidence document they can hand to the reviewer in an hour, that claims no more than the tests show."
+  },
+  "trigger": "They tell the agent: \"The accessibility review is Thursday. What can we show for the approval step?\"",
+  "advantage": {
+    "claim": "Accessibility is part of the specification, so the evidence already exists and only needs assembling.",
+    "versus": ["ai-elements", "assistant-ui", "patternbase", "shape-of-ai"],
+    "why_it_holds": "Each contract carries WCAG criteria with relevance notes, a keyboard table, screen reader expectations, and accessibility-category constraints mapped to named tests. Of the alternatives reviewed, assistant-ui describes its primitives as accessible and none documents criteria, expectations, or tests delivered to the consumer."
+  },
+  "contracts": [
+    {
+      "pattern": "approval-gate",
+      "constraints": ["controls-accessible", "gate-announced", "no-preselected-approve"]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project created with `npm init -y`, containing a tsconfig.json whose compilerOptions set \"jsx\": \"react-jsx\"."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Read the contract's accessibility block.",
+      "uses": {
+        "kind": "read",
+        "target": "patterns/approval-gate/pattern.contract.json",
+        "where": "repo"
+      },
+      "expect": "wcagCriteria with level and relevance, the keyboard table, screenReader expectations, focusManagement, and reducedMotion.",
+      "available": true,
+      "gap": "contract-not-fetchable"
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Scaffold the implementation and its tests.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "approval-gate", "framework": "react" }
+      },
+      "expect": "The component, the test file, COMPLIANCE.md, and the constraints array.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Write the files and run the tests, keeping the output.",
+      "uses": {
+        "kind": "command",
+        "run": "npm i -D <verify.dependencies, space separated> && cd src/patterns/approval-gate && <verify.command>"
+      },
+      "expect": "Every test passes, including the axe-core test.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Connect each WCAG criterion to the constraints that address it and the tests that prove them.",
+      "uses": { "kind": "judgment" },
+      "expect": "A mapping from criterion to constraint to test. Where the link is the agent's inference and not stated in the contract, it is marked as inferred.",
+      "available": true,
+      "gap": "wcag-not-linked-to-constraints"
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Read the body of each test cited as evidence and confirm it exercises what the rule is about.",
+      "uses": {
+        "kind": "read",
+        "target": "src/patterns/approval-gate/ApprovalGate.test.tsx",
+        "where": "workspace"
+      },
+      "expect": "Each cited test inspects or operates the elements its rule names. A test that carries the rule's id but asserts something narrower is reported as partial evidence.",
+      "available": true,
+      "gap": "weak-accessibility-proof"
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Write the evidence document.",
+      "uses": {
+        "kind": "edit",
+        "target": "ACCESSIBILITY-EVIDENCE.md",
+        "where": "workspace",
+        "change": "A table: WCAG criterion, level, rule, test, result from this run, strength of evidence (full, partial, inferred). Then a manual test script built from the keyboard table and the screen reader expectations. Open with one sentence saying this is evidence for a review, not a conformance claim."
+      },
+      "expect": "A document a reviewer can verify line by line.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "Every criterion the contract lists appears in the evidence.",
+      "check": "ACCESSIBILITY-EVIDENCE.md has a row for each entry in the contract's wcagCriteria."
+    },
+    {
+      "id": "c2",
+      "criterion": "Every automated row cites a test that ran and passed in this run.",
+      "check": "Each cited test name appears as passing in the s3 output."
+    },
+    {
+      "id": "c3",
+      "criterion": "The link from criterion to rule comes from the contract, not from inference.",
+      "check": "No row is marked inferred."
+    },
+    {
+      "id": "c4",
+      "criterion": "Every cited test proves the rule it is named for.",
+      "check": "From s5: no row is marked partial."
+    },
+    {
+      "id": "c5",
+      "criterion": "The document does not overclaim.",
+      "check": "It states that it is evidence for a review and lists what automated tests cannot show: screen reader output, the keyboard walk-through, and reduced motion."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "wcag-not-linked-to-constraints",
+      "summary": "The contract lists WCAG criteria and constraints separately. Which rule addresses which criterion is left for the reader to work out.",
+      "evidence": "approval-gate lists 3.3.4, 2.1.1, and 4.1.2 under wcagCriteria with no reference to a constraint id. Its gate-announced constraint has no listed criterion; 4.1.3 Status Messages looks like the natural one, which is the kind of guess this gap forces.",
+      "fix": "Add an optional constraints array to each wcagCriteria entry in the schema and fill it in for the ten contracts. A non-normative change.",
+      "scope": "in-scope",
+      "size": "M"
+    },
+    {
+      "id": "weak-accessibility-proof",
+      "summary": "At least one accessibility test is named for a rule it only partly proves.",
+      "evidence": "Baseline run: the rule controls-accessible requires approve and reject to be keyboard-operable with distinguishing accessible names. Its only named React test, \"controls-accessible: gate has group role with aria-label\", asserts the container's role and label and does not touch either button. axe-core runs in the proposed state only.",
+      "fix": "Run the contract-auditor subagent across all ten patterns and strengthen the tests it marks weak, starting here.",
+      "scope": "in-scope",
+      "size": "M"
+    },
+    {
+      "id": "contract-not-fetchable",
+      "summary": "A whole contract cannot be fetched without cloning the repository: the scaffold response omits states and the accessibility block, and there is no public URL.",
+      "evidence": "Baseline probe: the scaffold_pattern response for approval-gate has no accessibility field.",
+      "fix": "Serve each pattern.contract.json as a static file at a stable URL on the site.",
+      "scope": "in-scope",
+      "size": "M"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "scratch",
+    "schedule": "Per release of the consuming product, and after any contract revision.",
+    "notes": "This journey doubles as an audit of the catalog itself: c3 and c4 fail whenever a contract's accessibility claims are thinner than they read."
+  },
+  "baseline": {
+    "result": "fail",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

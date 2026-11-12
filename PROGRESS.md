@@ -1,7 +1,17 @@
 # Progress: AI UX Patterns Catalog
 
 **Last updated:** 2026-11-11  
-**Status:** 10/10 patterns at production standard (TEMPLATE.md). MCP server shipped (2 tools, 32 tests, 19/19 search evals, DEMO.md launch script). Site shipped: design foundation (approved), all pages, and the human layer — subscribe (Buttondown), contact channels, RSS, in-voice 404, REV. stamps. Catalog tests 369/369 green (proof audit 2026-11-11).
+**Status:** v1 is built and the gate is green; it is not launched. 10/10 patterns at production standard, MCP server with 2 tools, static site with live demos. Open launch blockers and owner decisions are tracked in [docs/NORTH-STAR.md](docs/NORTH-STAR.md). For current test and eval counts run `npm run check`; the counts in the dated entries below are historical.
+
+## Log since the 2026-06-12 snapshot
+
+Entries below this section were written on or before 2026-06-12 and are kept as the record of what shipped then.
+
+- **2026-07-01** — Repo-wide docs: `ARCHITECTURE.md`, `AGENTS.md`, ADRs 0001 to 0004. Getting-started page rebuilt, with site tests.
+- **2026-07-06** — Review follow-ups: search and scaffold changes in the MCP server (amendments in `mcp-server/DESIGN.md`, four eval cases added), `interruption-cancel` contract revision, live demos on every pattern page, and the adoption section for readers who do not use Claude Code.
+- **2026-07-12** — `source-attribution` reworked as a kit pattern with per-export anatomy (ADR-0005, schema and validator changes). Plain-language overviews on the index and pattern pages. `vercel.json` added to fix a deploy 404.
+- **2026-11-11** — Re-entry after four months. Gate verified green; site builds. Added `docs/NORTH-STAR.md` (intent, blockers, open decisions) and `docs/CLAUDE-PLAYBOOK.md`; project skills `/catch-up`, `/drift-check`, `/new-pattern`, `/ship`; the `contract-auditor` subagent; a contract-validation hook script; `.mcp.json` so sessions in this repo can call the catalog's own MCP server; and `.github/workflows/check.yml`, the first actual CI for the gate. `CLAUDE.md` now imports `AGENTS.md` (it was not being loaded) and states 10 patterns. Hard-coded test counts removed from standing docs. Found: the published site URL returns `DEPLOYMENT_NOT_FOUND`, and `LICENSE.md` ("All Rights Reserved") conflicts with the clone-and-copy adoption path on the site.
+- **2026-11-11 (later)** — Landscape research and use cases. `docs/research/landscape.md` surveys the neighbors (pattern guidance, component kits, context servers, agent-rendered UI protocols, spec tooling) and where this product wins and trails. `docs/journeys/` holds the use cases as journey files an agent can run: a schema, `RUNNER.md` (the portable protocol), the `/run-journey` skill, and `scripts/validate-journeys.mjs`, now part of `npm run validate` (journeys cite real pattern and constraint ids, so a rename fails the gate). Seven journeys were run against the real product; the report is `docs/journeys/runs/2026-11-11-baseline.md`. Found: the scaffold's verify command fails every test in a project whose `tsconfig` sets `jsx` to `preserve`; search cautions miss paraphrases and fire on substrings; the `controls-accessible` test for `approval-gate` proves less than its name says; scaffold cannot serve a private catalog although search can. Shown to work: a browser probe that judges a running UI against a contract with no source access. No product code was changed.
 
 ## What's Done
 
@@ -146,11 +156,14 @@ A spot check found `approval-gate`'s `controls-accessible` test asserted only th
 
 ### Phase 4: Launch
 
-1. **Commit the work** — the repo has only the initial commit; committing also gives feed.xml its real per-pattern dates.
-2. **Claim the Buttondown username** (`agent-ux-contracts`) or swap the constant in [site/lib/site.ts](site/lib/site.ts) — the subscribe forms POST to it.
-3. **Deploy to Vercel** (per CLAUDE.md) — `site/out` static export is build-ready; update `SITE_URL` in lib/site.ts if the domain differs.
-4. **Record the 90-second demo** — script is final in [mcp-server/DEMO.md](mcp-server/DEMO.md); embed the recording on /getting-started when it lands.
-5. **Index filters/search** — category/tag filtering on the homepage table if the catalog grows past comfortable scanning; Base UI enters then.
+The live list is the gaps table in [docs/NORTH-STAR.md](docs/NORTH-STAR.md). As of 2026-11-11:
+
+1. **Get the site live.** `site/out` builds cleanly, but `https://agent-ux-contracts.vercel.app` returns `DEPLOYMENT_NOT_FOUND`. Reconnect or redeploy the Vercel project; update `SITE_URL` in [site/lib/site.ts](site/lib/site.ts) if the domain differs.
+2. **Decide the license.** "All Rights Reserved" contradicts the adoption instructions on every pattern page.
+3. **Claim the Buttondown username** (`agent-ux-contracts`) or swap the constant in [site/lib/site.ts](site/lib/site.ts).
+4. **Decide distribution** for the MCP server (clone-and-build, npm, or hosted).
+5. **Record the 90-second demo** — script is final in [mcp-server/DEMO.md](mcp-server/DEMO.md).
+6. **Index filters/search** — only if the catalog grows past comfortable scanning.
 
 ## Known Constraints
 
@@ -173,10 +186,10 @@ A spot check found `approval-gate`'s `controls-accessible` test asserted only th
 ## Commands
 
 ```bash
-npm test                    # Run 369 tests (node:test glob patterns/**/*.test.{tsx,mjs})
+npm test                    # Catalog tests (node:test glob patterns/**/*.test.{tsx,mjs})
 npm run validate           # Validate 10 contracts against schema + cross-file checks
 npm run typecheck          # tsc -p tsconfig.json (strict)
 npm run check              # test + validate + typecheck + mcp-server check (all-or-nothing gate)
 npm run new-pattern -- <id> [Display Name]  # Scaffold a pattern skeleton
-npm --prefix mcp-server test   # 32 MCP server tests (incl. generated-code compile gate)
+npm --prefix mcp-server test   # MCP server tests (incl. generated-code compile gate)
 ```

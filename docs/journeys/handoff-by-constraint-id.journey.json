@@ -1,0 +1,182 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "handoff-by-constraint-id",
+  "revised": "2026-11-11",
+  "title": "Handoff by constraint id: one vocabulary from ticket to test",
+  "summary": "A designer writes a ticket whose acceptance criteria are constraint ids. The engineer's agent implements against them, QA reads the same ids in the test output, and the pull request cites them. Nobody re-explains the requirement.",
+  "status": "partial",
+  "persona": {
+    "role": "Product designer handing an agent-approval step to engineering",
+    "context": "Has a mockup of the approval step. Cannot read a JSON contract and should not have to. Past handoffs lost the keyboard and screen reader behavior between the mockup and the build.",
+    "goal": "Acceptance criteria that mean the same thing to the engineer, the agent, and QA, and that they can check themselves."
+  },
+  "trigger": "They open a ticket: \"Approval before the agent sends drafted emails.\"",
+  "advantage": {
+    "claim": "The ticket, the code, the test, and the review all point at the same rule by name.",
+    "versus": ["figma-mcp", "spec-driven-dev", "hax-toolkit"],
+    "why_it_holds": "Constraint ids are stable, each has a plain statement and a rationale, and the scaffolded tests are named for them. Figma's server carries the look of a design, not its behavior; spec-driven workflows invent a fresh vocabulary per project; guideline numbers do not appear in anyone's test output."
+  },
+  "contracts": [
+    {
+      "pattern": "approval-gate",
+      "constraints": [
+        "explicit-consent",
+        "accurate-preview",
+        "no-preselected-approve",
+        "irreversible-labeled",
+        "controls-accessible",
+        "gate-announced"
+      ]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project created with `npm init -y`, containing a tsconfig.json whose compilerOptions set \"jsx\": \"react-jsx\".",
+    "The ticket, as written by the designer: \"Approval before the agent sends drafted emails. Done when it meets approval-gate: explicit-consent, accurate-preview, no-preselected-approve, irreversible-labeled, controls-accessible, gate-announced.\""
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "persona",
+      "action": "Read what the pattern is for, in plain language, on its page.",
+      "uses": {
+        "kind": "read",
+        "target": "https://agent-ux-contracts.vercel.app/patterns/approval-gate/",
+        "where": "web"
+      },
+      "expect": "The plain-language overview and the numbered constraints.",
+      "available": false,
+      "gap": "site-not-live"
+    },
+    {
+      "id": "s2",
+      "actor": "persona",
+      "action": "Paste a link to each rule into the ticket, so anyone reading it lands on the rule itself.",
+      "uses": {
+        "kind": "read",
+        "target": "https://agent-ux-contracts.vercel.app/patterns/approval-gate/#explicit-consent",
+        "where": "web"
+      },
+      "expect": "The page scrolls to the explicit-consent constraint.",
+      "available": false,
+      "gap": "no-constraint-anchors"
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "As the engineer's agent: pull the look of the approval step from the design file.",
+      "uses": {
+        "kind": "external",
+        "name": "Figma MCP server (design context for the selected frame)",
+        "optional": true
+      },
+      "expect": "Layout, variables, and any mapped code components. Behavior comes from the contract, not from here.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Scaffold the pattern named in the ticket.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "approval-gate", "framework": "react" }
+      },
+      "expect": "Files, verify, constraints, and compliance_notes.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Write the returned files into the project unmodified.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/approval-gate/",
+        "where": "workspace",
+        "change": "Create one file per entry in the response's files array, with the returned content byte for byte."
+      },
+      "expect": "The files exist in src/patterns/approval-gate/.",
+      "available": true
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Install the verify dependencies and run the verify command.",
+      "uses": {
+        "kind": "command",
+        "run": "npm i -D <verify.dependencies, space separated> && cd src/patterns/approval-gate && <verify.command>"
+      },
+      "expect": "Every test passes.",
+      "available": true
+    },
+    {
+      "id": "s7",
+      "actor": "agent",
+      "action": "As QA: for each id in the ticket, find the passing tests named for it.",
+      "uses": { "kind": "judgment" },
+      "expect": "Every ticket id maps to at least one passing test whose name starts with that id.",
+      "available": true
+    },
+    {
+      "id": "s8",
+      "actor": "agent",
+      "action": "Write the pull request description.",
+      "uses": {
+        "kind": "edit",
+        "target": "PR-DESCRIPTION.md",
+        "where": "workspace",
+        "change": "The ticket's ids as a checklist, each with the test that proves it, then the contract version and hash."
+      },
+      "expect": "A description the designer can tick off against their own ticket.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "Every acceptance criterion in the ticket is a real rule.",
+      "check": "Each id in the ticket appears in the constraints array returned in s4."
+    },
+    {
+      "id": "c2",
+      "criterion": "Every criterion is visibly proven.",
+      "check": "For each ticket id, the s6 output contains a passing test whose name starts with that id."
+    },
+    {
+      "id": "c3",
+      "criterion": "A non-engineer can open each criterion and read it.",
+      "check": "Each link from s2 resolves and lands on the named constraint."
+    },
+    {
+      "id": "c4",
+      "criterion": "The pull request speaks the ticket's language.",
+      "check": "PR-DESCRIPTION.md lists every ticket id with a test name and carries the version and full contract_hash."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "site-not-live",
+      "summary": "The site is not deployed, so no pattern page can be reached.",
+      "evidence": "https://agent-ux-contracts.vercel.app returned Vercel DEPLOYMENT_NOT_FOUND on 2026-11-11. The site builds cleanly from this repository.",
+      "fix": "Reconnect or redeploy the Vercel project.",
+      "scope": "owner-decision",
+      "decision": "launch",
+      "size": "S"
+    },
+    {
+      "id": "no-constraint-anchors",
+      "summary": "A constraint cannot be linked to. The pattern page renders constraints as numbered clauses with no id on each.",
+      "evidence": "site/app/patterns/[id]/page.tsx sets no id attribute on constraint elements.",
+      "fix": "Render each constraint with its id as the element id, and show a copy-link control beside it.",
+      "scope": "in-scope",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "partial",
+    "workspace": "scratch",
+    "schedule": "After the site is live, on every deploy, to check that each constraint link still resolves.",
+    "notes": "The runner plays the designer, the engineer's agent, and QA in turn. s1 and s2 are blocked until the site is deployed and anchors exist; the rest runs today."
+  },
+  "baseline": { "result": "not-run" }
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "pin-and-drift-watch",
+  "revised": "2026-11-11",
+  "title": "Pin and drift watch: copied code that knows when its rules changed",
+  "summary": "A team that adopted patterns months ago has an agent check, on a schedule, whether the contracts behind their copies have changed, what changed, and whether anything needs doing.",
+  "status": "partial",
+  "persona": {
+    "role": "Tech lead of a product that adopted three patterns last quarter",
+    "context": "The code was copied in, the tests pass, and nobody has looked since. The catalog has moved on.",
+    "goal": "To hear about a changed rule from a bot, with the difference and the required action, instead of from a customer."
+  },
+  "trigger": "A weekly scheduled agent run in the consuming project.",
+  "advantage": {
+    "claim": "A copy that stays connected to the rules it was copied under.",
+    "versus": ["shadcn-registry", "ai-elements", "patternbase"],
+    "why_it_holds": "Every search and scaffold response carries version and contract_hash, and the scaffolded COMPLIANCE.md records both. The copy-paste model the kits use ends the relationship at the moment of copying: the code is yours, and so is finding out it went stale."
+  },
+  "contracts": [{ "pattern": "interruption-cancel", "constraints": [] }],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project standing in for the consuming repository."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Create the stale pin a team that adopted in June 2026 would hold.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/interruption-cancel/COMPLIANCE.md",
+        "where": "workspace",
+        "change": "Write a one-line header: contract interruption-cancel version 0.1.0, sha256 681fa9b03701363b893d292cc6027a6b7320d5f575095fd84f8f4fe1958d8868. This is the real hash of the contract as first committed."
+      },
+      "expect": "A file pinning a superseded version.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Ask the catalog for the current version and hash.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "interruption-cancel" }
+      },
+      "expect": "interruption-cancel with a version and contract_hash that differ from the pin.",
+      "available": true,
+      "gap": "no-remote-pin-check"
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Run the control: record the values just returned as a second pin, ask again, and compare.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "interruption-cancel" }
+      },
+      "expect": "Identical version and hash. No drift is reported for a fresh pin.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Find out what changed between the pinned version and the current one: which constraints were added, removed, or reworded.",
+      "uses": {
+        "kind": "read",
+        "target": "https://agent-ux-contracts.vercel.app/patterns/interruption-cancel/",
+        "where": "web"
+      },
+      "expect": "A per-version change record for the contract.",
+      "available": false,
+      "gap": "no-contract-changelog"
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Decide what the team must do, from the size of the version bump.",
+      "uses": { "kind": "judgment" },
+      "expect": "Patch: update the pin. Minor: review the new non-MUST behavior. Major: a MUST changed, so re-scaffold the tests and re-verify. The agent states which applies and why.",
+      "available": true,
+      "gap": "no-contract-changelog"
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Update the pin and leave a note for the team.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/interruption-cancel/COMPLIANCE.md",
+        "where": "workspace",
+        "change": "Replace the header with the current version and hash, and add a dated line: previous pin, new pin, what changed if known, action taken."
+      },
+      "expect": "The pin matches the catalog and the change is recorded.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "A stale pin is detected.",
+      "check": "The hash returned in s2 differs from the pinned hash, and the agent reports drift."
+    },
+    {
+      "id": "c2",
+      "criterion": "A fresh pin raises no alarm.",
+      "check": "s3 returns the same version and hash as s2, and the agent reports no drift."
+    },
+    {
+      "id": "c3",
+      "criterion": "The agent can say what changed.",
+      "check": "The note written in s6 names the constraints that were added, removed, or reworded, obtained from the catalog and not from its git history."
+    },
+    {
+      "id": "c4",
+      "criterion": "The check needs no local clone of the catalog.",
+      "check": "The current version and hash in s2 came from a public endpoint, not from a server running out of a checkout."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "no-contract-changelog",
+      "summary": "A changed hash says that a contract changed, not what changed or why.",
+      "evidence": "Baseline run: interruption-cancel went from 0.1.0 to 0.1.1. Learning that only aliases and tags changed took a hand-written diff of two git revisions. The versioning table is in AGENTS.md, which a consumer never sees.",
+      "fix": "Generate a change record per contract at build time from git history (constraints added, removed, reworded per version), show it on the pattern page and in the RSS item, and state the versioning rule in pin_note.",
+      "scope": "in-scope",
+      "size": "M"
+    },
+    {
+      "id": "no-remote-pin-check",
+      "summary": "The current hash can only be read from an MCP server running out of a local clone, so a consumer has to keep a checkout up to date to check a pin.",
+      "evidence": "The site is not deployed and exposes no machine-readable version or hash. The RSS item guid carries id@version but no hash (site/app/feed.xml/route.ts).",
+      "fix": "Publish a static JSON index of id, version, and hash on the site.",
+      "scope": "in-scope",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "partial",
+    "workspace": "scratch",
+    "schedule": "Weekly in the consuming repository.",
+    "notes": "The stale pin in s1 is a historical constant and stays valid. If interruption-cancel is ever reverted to that exact content, pick another superseded revision."
+  },
+  "baseline": {
+    "result": "fail",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

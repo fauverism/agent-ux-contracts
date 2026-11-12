@@ -1,0 +1,196 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "ground-a-coding-agent",
+  "revised": "2026-11-11",
+  "title": "Ground a coding agent: find, scaffold, verify, pin",
+  "summary": "A UX engineer asks their coding agent for an AI interface feature. The agent finds the right pattern in product language, scaffolds a compliant implementation with its tests, proves it in the engineer's own project, and records which contract version the code satisfies.",
+  "status": "partial",
+  "persona": {
+    "role": "UX engineer building an agent feature in a Next.js app",
+    "context": "Works through a coding agent. Knows what a good stop button feels like and is tired of reviewing agent output that drops the accessibility half.",
+    "goal": "A cancel control for a long-running agent task that is correct on the first review, with evidence they can point at."
+  },
+  "trigger": "They tell the agent: \"Add a way to stop the email-drafting agent mid-run.\"",
+  "advantage": {
+    "claim": "The agent receives the rules and the proof, not just a component.",
+    "versus": ["ai-elements", "assistant-ui", "patternbase", "shadcn-registry", "storybook-mcp"],
+    "why_it_holds": "scaffold_pattern returns the component, a test file whose test names start with the constraint id each test proves, and compliance_notes mapping every MUST to a code anchor. The kits and context servers reviewed deliver component source, props, and docs; none of the pages read describes behavior rules or tests that travel with the component."
+  },
+  "contracts": [
+    {
+      "pattern": "interruption-cancel",
+      "constraints": ["immediate-acknowledgment", "cancel-not-gated", "focus-not-lost"]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project created with `npm init -y`, containing a tsconfig.json whose compilerOptions set \"jsx\": \"preserve\". That is the value this repository's own Next.js site uses (site/tsconfig.json), so it stands in for a typical consumer."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "persona",
+      "action": "Read the setup instructions and count what it takes to connect the catalog to a coding agent.",
+      "uses": { "kind": "read", "target": "mcp-server/README.md", "where": "repo" },
+      "expect": "The number of commands and whether any of them needs an absolute path to a local clone.",
+      "available": true,
+      "gap": "clone-only-install"
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Search the catalog in the persona's words, not in pattern names.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "let the user stop a long running agent task" }
+      },
+      "expect": "interruption-cancel ranked first, with its MUST statements, version, and contract_hash.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Read the top result's MUST list and check it for a caution or a low-confidence advisory before committing to it.",
+      "uses": { "kind": "judgment" },
+      "expect": "No caution or advisory on the top result. The agent names the MUSTs that matter for this feature.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Scaffold the React implementation.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "interruption-cancel", "framework": "react" }
+      },
+      "expect": "A response with files (component, test file, setup-dom.mjs, COMPLIANCE.md), verify, usage, agent_notes, constraints, and compliance_notes.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Write every returned file into the project without modifying it.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/interruption-cancel/",
+        "where": "workspace",
+        "change": "Create one file per entry in the response's files array, with the returned content byte for byte."
+      },
+      "expect": "Four files exist in src/patterns/interruption-cancel/.",
+      "available": true
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Install the dependencies the response lists for verification.",
+      "uses": { "kind": "command", "run": "npm i -D <verify.dependencies, space separated>" },
+      "expect": "npm exits 0.",
+      "available": true
+    },
+    {
+      "id": "s7",
+      "actor": "agent",
+      "action": "Run the verify command exactly as returned, from the directory the files were written to.",
+      "uses": { "kind": "command", "run": "cd src/patterns/interruption-cancel && <verify.command>" },
+      "expect": "Every test passes on the first run.",
+      "available": true,
+      "gap": "verify-needs-react-jsx"
+    },
+    {
+      "id": "s8",
+      "actor": "agent",
+      "action": "Decide how the component must be wired into the feature, using only usage and agent_notes from the response.",
+      "uses": { "kind": "judgment" },
+      "expect": "The agent states what onCancel must be connected to and which host props drive the state, without opening the catalog's source.",
+      "available": true
+    },
+    {
+      "id": "s9",
+      "actor": "agent",
+      "action": "Confirm the contract version and hash were recorded next to the code.",
+      "uses": {
+        "kind": "read",
+        "target": "src/patterns/interruption-cancel/COMPLIANCE.md",
+        "where": "workspace"
+      },
+      "expect": "The file header carries the same version and sha256 as the scaffold response.",
+      "available": true
+    },
+    {
+      "id": "s10",
+      "actor": "agent",
+      "action": "Report to the persona: what was added, which rules it satisfies by constraint id, and what they still have to connect.",
+      "uses": { "kind": "judgment" },
+      "expect": "A short report that cites constraint ids and the passing test for each, not a general claim that the component is accessible.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "The right pattern ranks first for a query written in product language.",
+      "check": "In the s2 response, results[0].id is interruption-cancel."
+    },
+    {
+      "id": "c2",
+      "criterion": "Every MUST and MUST_NOT is mapped to code that exists.",
+      "check": "For each constraint in the s4 response whose level starts with MUST, compliance_notes has an entry, and that entry's satisfied_by.anchor string occurs in the file it names."
+    },
+    {
+      "id": "c3",
+      "criterion": "Verification passes on the first run with no change to the project's configuration.",
+      "check": "s7 exits 0 with zero failing tests, in the scratch project exactly as the preconditions describe it."
+    },
+    {
+      "id": "c4",
+      "criterion": "The pin is recorded with the code.",
+      "check": "COMPLIANCE.md contains the version and the full contract_hash returned in s4."
+    },
+    {
+      "id": "c5",
+      "criterion": "Connecting the catalog is one command and needs no absolute path.",
+      "check": "From s1: the documented setup is a single command and contains no path into a local clone."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "verify-needs-react-jsx",
+      "summary": "The returned verify command fails every test unless the consumer's tsconfig sets jsx to react-jsx, and the tool response does not say so.",
+      "evidence": "Baseline run: 13 of 13 tests fail with \"React is not defined\" when the project has no tsconfig, and again with \"jsx\": \"preserve\". 13 of 13 pass with \"jsx\": \"react-jsx\". See docs/journeys/runs/2026-11-11-baseline.md.",
+      "fix": "Make verification hermetic: return a tsconfig.json alongside the scaffolded files so tsx resolves it from the pattern directory, or state the requirement inside verify.",
+      "scope": "in-scope",
+      "size": "S"
+    },
+    {
+      "id": "clone-only-install",
+      "summary": "The MCP server can only be installed by cloning the repository, building it, and registering an absolute path.",
+      "evidence": "mcp-server/package.json is private and unpublished; mcp-server/README.md registers /absolute/path/to/agent-ux-contracts/mcp-server/dist/index.js.",
+      "fix": "Publish the server so setup is one line, or ship it inside a Claude Code plugin. See docs/research/landscape.md, UX moves 5 to 7.",
+      "scope": "owner-decision",
+      "decision": "distribution",
+      "size": "M"
+    },
+    {
+      "id": "license-blocks-adoption",
+      "summary": "The license reserves all rights while the product asks people to copy its code.",
+      "evidence": "LICENSE.md reads \"All Rights Reserved\".",
+      "fix": "Choose a license that permits the adoption the product is built for.",
+      "scope": "owner-decision",
+      "decision": "license",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "scratch",
+    "schedule": "Weekly, and after any change under mcp-server/src/ or patterns/interruption-cancel/.",
+    "notes": "This is the core journey. If only one runs on a schedule, run this one."
+  },
+  "baseline": {
+    "result": "fail",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

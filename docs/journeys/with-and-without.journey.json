@@ -1,0 +1,133 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "with-and-without",
+  "revised": "2026-11-11",
+  "title": "With and without: measure what the catalog changes",
+  "summary": "The same request is built twice: once by an agent with no access to the catalog, once with it. Both results are scored against the same contract, rule by rule. The scorecard is the evidence for the product's thesis, or against it.",
+  "status": "partial",
+  "persona": {
+    "role": "The catalog's owner, or an engineer deciding whether to adopt it",
+    "context": "The pitch is that agents drop behavior rules they were never told about. Nobody has measured that for these patterns with current models.",
+    "goal": "A number per pattern: how many MUST rules a capable agent satisfies cold, against how many it satisfies with the catalog."
+  },
+  "trigger": "Before a launch post, after a new model release, or when someone asks \"does this actually help?\"",
+  "advantage": {
+    "claim": "A catalog that can measure its own effect, because its rules can be counted.",
+    "versus": ["ai-elements", "assistant-ui", "shape-of-ai", "hax-toolkit"],
+    "why_it_holds": "Each contract is a finite list of atomic rules with a level, so compliance is a count. Prose guidance has no list to score against, and a component kit can only ask whether its component was installed."
+  },
+  "contracts": [
+    {
+      "pattern": "interruption-cancel",
+      "constraints": [
+        "immediate-acknowledgment",
+        "no-silent-continuation",
+        "partial-work-honesty",
+        "completion-race-honest",
+        "cancel-not-gated",
+        "cancel-control-accessible",
+        "cancellation-announced",
+        "focus-not-lost"
+      ]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable in the scoring session (see RUNNER.md, Connecting the catalog).",
+    "A way to start a second agent session that has no catalog tools, no access to this repository, and no memory of it. In Claude Code: a subagent with no MCP tools, or `claude -p` run in an empty directory.",
+    "A scratch project with two empty directories, cold/ and catalog/."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Have the clean session build the feature cold. Give it exactly this prompt and nothing else: \"Build a React component that lets a user stop a long-running agent task that has side effects, such as sending emails. The host tells the component whether work is running and what has completed. Write it to cold/StopControl.tsx.\"",
+      "uses": {
+        "kind": "external",
+        "name": "A separate agent session with no catalog tools and no access to this repository"
+      },
+      "expect": "cold/StopControl.tsx, written without any exposure to the contract.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Build the catalog arm.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "interruption-cancel", "framework": "react" }
+      },
+      "expect": "The component and the full constraints array. Write the component to catalog/.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Score both components against every MUST and MUST_NOT, using one method for both: read the source and decide whether the rule holds, citing the line.",
+      "uses": { "kind": "judgment" },
+      "expect": "For each rule and each arm: pass, fail, or unknown, with a file and line. The catalog arm gets no benefit of the doubt.",
+      "available": true,
+      "gap": "no-generation-benchmark"
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Write the scorecard.",
+      "uses": {
+        "kind": "edit",
+        "target": "SCORECARD.md",
+        "where": "workspace",
+        "change": "A table with one row per MUST-level constraint: id, cold verdict and evidence, catalog verdict and evidence. Then two totals. Then, for each cold failure, one sentence on what a user would have experienced."
+      },
+      "expect": "A scorecard that can be published as it stands.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Say what the result means for the catalog.",
+      "uses": { "kind": "judgment" },
+      "expect": "Rules the cold arm missed are the pattern's demonstrated value. Rules the cold arm met are candidates for demotion from the pitch. Any catalog-arm failure is a bug to report. A tie is reported as a tie.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "The cold arm was really cold.",
+      "check": "The session in s1 had no catalog tools and its prompt contained no rule text. State how this was ensured."
+    },
+    {
+      "id": "c2",
+      "criterion": "Both arms were scored the same way.",
+      "check": "Every verdict in SCORECARD.md, for both arms, cites a file and line. Neither arm was scored by running tests the other could not run."
+    },
+    {
+      "id": "c3",
+      "criterion": "The scorecard is complete.",
+      "check": "SCORECARD.md has one row for every MUST-level constraint returned in s2."
+    },
+    {
+      "id": "c4",
+      "criterion": "The result is reported as found.",
+      "check": "The totals appear without commentary that explains away a small difference or a tie."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "no-generation-benchmark",
+      "summary": "Nothing in the repository measures whether using the catalog changes what an agent builds. The eval harness scores search ranking only.",
+      "evidence": "mcp-server/evals/cases.ts holds search queries and expected ranks. There is no stored cold-arm prompt, scorecard, or history.",
+      "fix": "Keep the cold-arm prompts and each run's scorecard as an eval set beside mcp-server/evals, and re-run on a new model or a contract revision.",
+      "scope": "in-scope",
+      "size": "M"
+    }
+  ],
+  "automation": {
+    "runnable": "partial",
+    "workspace": "scratch",
+    "schedule": "Once per new model release and before any public claim about the catalog's effect.",
+    "notes": "Partial because it needs a second, clean session. For stronger evidence, score both arms with probe-a-running-ui instead of by reading source. One pattern per run keeps the cold prompt honest; write a sibling prompt per pattern rather than a combined one."
+  },
+  "baseline": { "result": "not-run" }
+}

@@ -1,0 +1,135 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "zero-install-first-run",
+  "revised": "2026-11-11",
+  "title": "Zero-install first run: a stranger gets to green tests in five minutes",
+  "summary": "Someone who has never seen the catalog lands on a pattern page, copies one line, and has a compliant, tested component in their own project. This is the experience the alternatives already offer and this product does not.",
+  "status": "not-built",
+  "persona": {
+    "role": "Engineer who followed a link and has five minutes",
+    "context": "Has a Next.js project open. Will not clone a repository, build a server, or edit an absolute path to try something.",
+    "goal": "To see the claim proven in their own project before deciding whether to care."
+  },
+  "trigger": "They land on the approval-gate page from a post or a search result.",
+  "advantage": {
+    "claim": "Match the one-line baseline without building a CLI or a service, by publishing into installers people already run.",
+    "versus": ["ai-elements", "shadcn-registry", "agent-skills", "assistant-ui", "claude-plugins"],
+    "why_it_holds": "It does not hold yet. The alternatives install with one command today. The route to parity that respects the scope limits is to emit static files other tools consume: a shadcn-compatible registry, a skills folder, a plugin manifest. Once there, the same one line would also deliver tests and a pin, which theirs do not."
+  },
+  "preconditions": [
+    "A new project from `npx create-next-app@latest` with TypeScript, unmodified.",
+    "No local clone of the catalog."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "persona",
+      "action": "Open the pattern page and find the install line.",
+      "uses": {
+        "kind": "read",
+        "target": "https://agent-ux-contracts.vercel.app/patterns/approval-gate/",
+        "where": "web"
+      },
+      "expect": "One copyable command near the top of the page.",
+      "available": false,
+      "gap": "site-not-live"
+    },
+    {
+      "id": "s2",
+      "actor": "persona",
+      "action": "Run the one line in the project.",
+      "uses": { "kind": "command", "run": "<the single install command shown on the page>" },
+      "expect": "The component, its tests, and COMPLIANCE.md appear in the project. No clone, no build step, no absolute path.",
+      "available": false,
+      "gap": "no-one-line-install"
+    },
+    {
+      "id": "s3",
+      "actor": "persona",
+      "action": "Run the verification command the install printed.",
+      "uses": { "kind": "command", "run": "<the verify command printed by the install>" },
+      "expect": "Every test passes in the unmodified create-next-app project.",
+      "available": false,
+      "gap": "no-one-line-install"
+    },
+    {
+      "id": "s4",
+      "actor": "persona",
+      "action": "Check what they are allowed to do with the code.",
+      "uses": { "kind": "read", "target": "LICENSE.md", "where": "repo" },
+      "expect": "A license that permits using the copied code in their own product.",
+      "available": true,
+      "gap": "license-blocks-adoption"
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "One command, no clone, no absolute path.",
+      "check": "s2 is a single command that fetches everything it needs."
+    },
+    {
+      "id": "c2",
+      "criterion": "Landing to green tests in under five minutes.",
+      "check": "Wall-clock time from opening the page in s1 to a passing run in s3 is under five minutes on a normal connection."
+    },
+    {
+      "id": "c3",
+      "criterion": "It works in an unmodified create-next-app project.",
+      "check": "s3 passes with no edit to tsconfig.json or package.json beyond what the install itself made."
+    },
+    {
+      "id": "c4",
+      "criterion": "The license permits what the page tells the reader to do.",
+      "check": "LICENSE.md grants use, modification, and redistribution of the copied code."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "site-not-live",
+      "summary": "The site is not deployed, so no pattern page can be reached.",
+      "evidence": "https://agent-ux-contracts.vercel.app returned Vercel DEPLOYMENT_NOT_FOUND on 2026-11-11.",
+      "fix": "Reconnect or redeploy the Vercel project.",
+      "scope": "owner-decision",
+      "decision": "launch",
+      "size": "S"
+    },
+    {
+      "id": "no-one-line-install",
+      "summary": "Nothing can be installed without cloning the repository.",
+      "evidence": "The adoption section on each pattern page begins with `git clone`. Both packages are private and unpublished.",
+      "fix": "Choose one or more: static shadcn-compatible registry JSON emitted by the site build; a skills/ folder installable with `npx skills add`; the MCP server on npm or in a Claude Code plugin. See docs/research/landscape.md, UX moves 5 to 7.",
+      "scope": "owner-decision",
+      "decision": "distribution",
+      "size": "M"
+    },
+    {
+      "id": "verify-needs-react-jsx",
+      "summary": "The returned verify command fails every test unless the consumer's tsconfig sets jsx to react-jsx, and the tool response does not say so.",
+      "evidence": "Baseline run of ground-a-coding-agent: 13 of 13 tests fail under \"jsx\": \"preserve\".",
+      "fix": "Make verification hermetic, as described in the ground-a-coding-agent journey.",
+      "scope": "in-scope",
+      "size": "S"
+    },
+    {
+      "id": "license-blocks-adoption",
+      "summary": "The license reserves all rights while the product asks people to copy its code.",
+      "evidence": "LICENSE.md reads \"All Rights Reserved\".",
+      "fix": "Choose a license that permits the adoption the product is built for.",
+      "scope": "owner-decision",
+      "decision": "license",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "spec-only",
+    "workspace": "scratch",
+    "schedule": "Run in plan mode now. Once the gaps close, run it after every site deploy: it is the smoke test for the front door.",
+    "notes": "This journey is the definition of done for launch. Three of its four gaps are owner decisions; run it in plan mode to get the options laid out side by side."
+  },
+  "baseline": {
+    "result": "blocked",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

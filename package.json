@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "node --import tsx --import ./scripts/setup-dom.mjs --test schema/pattern-contract.test.mjs \"patterns/**/*.test.tsx\" \"patterns/**/*.test.mjs\"",
-    "validate": "node scripts/validate-contracts.mjs",
+    "validate": "node scripts/validate-contracts.mjs && node scripts/validate-journeys.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "check": "npm test && npm run validate && npm run typecheck && npm --prefix mcp-server run check && npm --prefix site run typecheck",
     "new-pattern": "node scripts/new-pattern.mjs"

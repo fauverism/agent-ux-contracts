@@ -1,0 +1,148 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "audit-existing-ui",
+  "revised": "2026-11-11",
+  "title": "Audit existing code: a review standard an agent can apply line by line",
+  "summary": "An agent reviews source code that already exists, such as a pull request or an inherited chat UI, against the contracts for the patterns it contains, and returns a verdict per rule with the line that proves or breaks it.",
+  "status": "partial",
+  "persona": {
+    "role": "Engineer reviewing AI interface code written by someone else, or by an agent",
+    "context": "A streaming chat view shipped before any of this existed. An accessibility complaint has arrived and nobody knows what the component was supposed to guarantee.",
+    "goal": "A short list of the rules the code breaks, each with a line number, a reason, and a test that would have caught it."
+  },
+  "trigger": "They tell the agent: \"Review this streaming response component. What does it get wrong?\"",
+  "advantage": {
+    "claim": "Review comments that cite a rule, a reason, and a test, not a reviewer's taste.",
+    "versus": ["storybook-mcp", "figma-mcp", "hax-toolkit"],
+    "why_it_holds": "Every constraint has a stable id, a level, a rationale, and a verification note, so a finding can be stated as a violated rule. Storybook and Figma servers describe what exists; the HAX workbook is an exercise for a human team. None hands an agent a standard to judge code against."
+  },
+  "contracts": [
+    {
+      "pattern": "streaming-response",
+      "constraints": [
+        "no-focus-steal",
+        "focus-not-lost",
+        "completion-announced",
+        "interruptible",
+        "partial-preserved"
+      ]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project to hold the code under review."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Set up the code under review. For an unattended run, take the reference streaming component as the inherited code.",
+      "uses": {
+        "kind": "read",
+        "target": "patterns/streaming-response/react/StreamingResponse.tsx",
+        "where": "repo"
+      },
+      "expect": "The component source, to be copied into the workspace as inherited/ChatStream.tsx.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Seed one known defect so the audit has something it must find.",
+      "uses": {
+        "kind": "edit",
+        "target": "inherited/ChatStream.tsx",
+        "where": "workspace",
+        "change": "Write the copy from s1, then remove the attributes role=\"status\", aria-live=\"polite\", and aria-atomic=\"true\" from the visually hidden announcement element. Change nothing else."
+      },
+      "expect": "A component that no longer announces completion to assistive technology and otherwise behaves as before.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "From here on, act as a reviewer who has not seen s1 or s2. Identify which pattern the code implements by describing what it does.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "render model output progressively as tokens arrive with a stop control" }
+      },
+      "expect": "streaming-response ranked first.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Fetch the full rules, with the verification note for each.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "streaming-response", "framework": "react" }
+      },
+      "expect": "A constraints array. The returned files are not used and must not be compared with the code under review.",
+      "available": true,
+      "gap": "no-audit-entry-point"
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Judge the code against each MUST and MUST_NOT.",
+      "uses": { "kind": "judgment" },
+      "expect": "For every rule: pass, fail, or unknown, with the file and line that supports it. Unknown is allowed; a pass without a cited line is not.",
+      "available": true
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Write the review.",
+      "uses": {
+        "kind": "edit",
+        "target": "AUDIT.md",
+        "where": "workspace",
+        "change": "Findings ordered MUST_NOT and MUST first. Each finding: constraint id, level, the line, the contract's rationale in one sentence, the smallest fix, and the name of the test that should be added, in the form \"<constraint-id>: <behavior>\"."
+      },
+      "expect": "A review the author of the code could act on without asking a question.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "The seeded defect is found and attributed to the right rule.",
+      "check": "AUDIT.md reports a failure under completion-announced that points at the announcement element in inherited/ChatStream.tsx."
+    },
+    {
+      "id": "c2",
+      "criterion": "No rule is passed on faith.",
+      "check": "Every pass in AUDIT.md cites a file and line. Rules the reviewer could not settle from the source are marked unknown."
+    },
+    {
+      "id": "c3",
+      "criterion": "No false alarms.",
+      "check": "No MUST-level rule other than completion-announced is reported as a failure."
+    },
+    {
+      "id": "c4",
+      "criterion": "Every finding names the test that would have caught it.",
+      "check": "Each failure in AUDIT.md includes a proposed test name starting with the constraint id."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "no-audit-entry-point",
+      "summary": "The catalog has no way to say \"check this code\". An agent must discover that scaffold_pattern is how to read a contract, then ignore the files it generates.",
+      "evidence": "The server exposes exactly two tools, search_patterns and scaffold_pattern. A check_consistency tool is listed as deferred in PROGRESS.md to hold the two-tool cap.",
+      "fix": "Either lift the cap for a third tool, or deliver the audit as a published skill that carries this procedure and uses the two existing tools. The contract-auditor subagent in .claude/agents/ is the internal version of that skill.",
+      "scope": "owner-decision",
+      "decision": "scope",
+      "size": "M"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "scratch",
+    "schedule": "On demand, and as the prompt behind a pull-request review for repositories that adopted a pattern.",
+    "notes": "The seeded defect makes the run self-checking. For real use, skip s1 and s2 and point the agent at the code to review. For a running UI with no source access, use probe-a-running-ui instead."
+  },
+  "baseline": { "result": "not-run" }
+}
