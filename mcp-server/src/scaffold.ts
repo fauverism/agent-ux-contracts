@@ -59,6 +59,17 @@ const TEST_DEPENDENCIES: Record<Framework, string[]> = {
   vanilla: ['axe-core', 'jsdom', 'global-jsdom'],
 };
 
+/**
+ * Per-file JSX pragmas prepended to every generated .tsx file (DESIGN.md
+ * amendment 15). The verify command runs through tsx, which takes its JSX
+ * mode from whatever tsconfig.json sits in the receiver's working directory:
+ * "preserve", "react", or no tsconfig at all compile JSX to
+ * React.createElement and every test dies with "React is not defined". The
+ * pragmas pin the automatic runtime in the file itself, so the result no
+ * longer depends on the receiver's config. Comments only — no code changes.
+ */
+export const JSX_PRAGMA = '/** @jsxRuntime automatic */\n/** @jsxImportSource react */\n';
+
 /** Extract a `## Heading` section's body from doc.mdx (up to the next `## `). */
 function mdxSection(doc: string, heading: string): string | undefined {
   const match = doc.match(new RegExp(`^## ${heading}\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, 'm'));
@@ -187,6 +198,10 @@ export function scaffoldPattern(
   if (componentName !== referenceName) {
     const rename = (src: string) => src.replaceAll(referenceName, componentName);
     files = { component: rename(files.component), test: rename(files.test) };
+  }
+
+  if (fw === 'react') {
+    files = { component: JSX_PRAGMA + files.component, test: JSX_PRAGMA + files.test };
   }
 
   const emitted: ScaffoldedFile[] = [

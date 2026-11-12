@@ -293,6 +293,43 @@ Approved design, adjusted where implementation proved a decision wrong:
     `onApprove(this.previewedPayload)` (the payload is now captured at
     mount).
 
+15. **React scaffolds pin their JSX runtime per file (2026-11-12, NORTH-STAR
+    gap 7).** The verify command runs through tsx, which takes its JSX mode
+    from the `tsconfig.json` in the receiver's working directory. With
+    `"jsx": "preserve"` (what Next.js-style projects set), `"jsx": "react"`,
+    or no tsconfig at all, JSX compiled to `React.createElement` and every
+    scaffolded test failed with "React is not defined" — at the moment the
+    receiver was told to verify. `scaffold_pattern` now prepends
+    `/** @jsxRuntime automatic */` and `/** @jsxImportSource react */` to the
+    generated component and test files. They are comments: no code changes,
+    no compliance anchor moves, output stays byte-deterministic, and the
+    verify command is unchanged. Measured over stdio in fresh projects:
+    react-jsx, preserve, no tsconfig, classic `react`, and
+    `jsxImportSource: "preact"` all pass; before, only react-jsx did.
+    *Alternatives:* (a) emit a `tsconfig.json` with the files — overwrites or
+    collides with the receiver's own; (b) point tsx at a shipped config with
+    `TSX_TSCONFIG_PATH` in the verify command — the `VAR=value cmd` form is
+    not portable to Windows shells, and the command stops being
+    copy-pasteable; (c) state the requirement in `verify` — keeps the failure
+    and moves the work to the receiver; (d) `import React` in every file —
+    edits code rather than comments and trips `noUnusedLocals` under the
+    automatic runtime. *Why this:* it is the only option that makes the
+    result independent of the receiver's config without touching their
+    project or the command. *Not covered:* the reference files under
+    `patterns/<id>/react` are unchanged, so a hand-vendored copy (the site's
+    adoption section) still needs `"jsx": "react-jsx"`.
+16. **Executed-suite tests strip `NODE_TEST_CONTEXT` (2026-11-12).** Writing
+    the regression test for 15 showed that a nested `node --test` started
+    from inside node:test inherits `NODE_TEST_CONTEXT`, reports to a parent
+    that is not listening, and exits 0 even when every test fails. The
+    existing "generated tests pass for the tokenBatching variant" test had
+    therefore never been able to fail. Both executed-suite tests now run the
+    child with that variable removed; the tokenBatching suite passes when
+    actually run, and the new test fails when the pragmas are removed.
+    *Alternative:* parse the child's output for `# fail 0`. *Why not:* the
+    exit code is the contract a receiver's CI relies on, so the test should
+    rely on it too.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 
