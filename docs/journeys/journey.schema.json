@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-ux-patterns:journey:v1",
+  "title": "Journey",
+  "description": "A use case for the catalog written so an agent can execute it. A journey names a persona, the moment it starts, the steps with the exact tool or command each one uses, and success criteria with a check an agent can perform. Steps the product cannot support yet are marked unavailable and point at a gap, so a run reports them as blocked instead of improvising. The execution protocol is docs/journeys/RUNNER.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "revised",
+    "title",
+    "summary",
+    "status",
+    "persona",
+    "trigger",
+    "advantage",
+    "preconditions",
+    "steps",
+    "success",
+    "gaps",
+    "automation",
+    "baseline"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "description": "Kebab-case id. Must equal the file name without .journey.json.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "revised": {
+      "description": "Date this file was last changed in substance.",
+      "type": "string",
+      "format": "date"
+    },
+    "title": { "type": "string", "minLength": 3 },
+    "summary": {
+      "description": "One or two sentences: who does what and what they end up with.",
+      "type": "string",
+      "minLength": 20
+    },
+    "status": {
+      "description": "works-today: every step is available and the baseline run met every success criterion. partial: runnable, but a step is unavailable or a criterion failed. not-built: the journey cannot be completed with what is shipped.",
+      "enum": ["works-today", "partial", "not-built"]
+    },
+    "persona": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "context", "goal"],
+      "properties": {
+        "role": { "type": "string", "minLength": 3 },
+        "context": { "type": "string", "minLength": 10 },
+        "goal": { "type": "string", "minLength": 10 }
+      }
+    },
+    "trigger": {
+      "description": "The moment the journey starts, in the persona's words where possible.",
+      "type": "string",
+      "minLength": 10
+    },
+    "advantage": {
+      "description": "Why this journey is better here than with the alternatives in docs/research/landscape.md.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "versus", "why_it_holds"],
+      "properties": {
+        "claim": { "type": "string", "minLength": 10 },
+        "versus": {
+          "description": "Ids from the landscape tables.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" }
+        },
+        "why_it_holds": { "type": "string", "minLength": 20 }
+      }
+    },
+    "contracts": {
+      "description": "Patterns and constraint ids this journey names. Validated against the real contracts so a renamed constraint fails the gate instead of rotting here.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pattern", "constraints"],
+        "properties": {
+          "pattern": { "type": "string" },
+          "constraints": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 5 }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "actor", "action", "uses", "expect", "available"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^s[0-9]+$" },
+          "actor": {
+            "description": "persona: the human. agent: the persona's AI assistant. A runner plays both.",
+            "enum": ["persona", "agent"]
+          },
+          "action": { "type": "string", "minLength": 10 },
+          "uses": {
+            "description": "The one mechanism this step may use. Required fields per kind are enforced by scripts/validate-journeys.mjs: mcp-tool needs tool and input; command needs run; read needs target and where; edit needs target, where and change; external needs name; judgment needs nothing.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "enum": ["mcp-tool", "command", "read", "edit", "external", "judgment"]
+              },
+              "tool": { "enum": ["search_patterns", "scaffold_pattern"] },
+              "input": { "type": "object" },
+              "run": { "type": "string" },
+              "target": { "type": "string" },
+              "where": {
+                "description": "repo: a path in this repository. workspace: a path in the run's scratch project. web: a URL.",
+                "enum": ["repo", "workspace", "web"]
+              },
+              "change": { "type": "string" },
+              "name": { "type": "string" },
+              "optional": {
+                "description": "True when the journey still completes if this mechanism is not connected.",
+                "type": "boolean"
+              }
+            }
+          },
+          "expect": {
+            "description": "What an observer would see if the step worked.",
+            "type": "string",
+            "minLength": 10
+          },
+          "available": {
+            "description": "False when the product cannot support this step today. An unavailable step must name its gap.",
+            "type": "boolean"
+          },
+          "gap": {
+            "description": "Id of the gap that blocks this step or makes it harder than it should be.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "success": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "criterion", "check"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^c[0-9]+$" },
+          "criterion": { "type": "string", "minLength": 10 },
+          "check": {
+            "description": "How an agent verifies the criterion: what to run or inspect and what counts as a pass.",
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "summary", "evidence", "fix", "scope", "size"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "summary": { "type": "string", "minLength": 10 },
+          "evidence": {
+            "description": "What was observed, and where. A file path, a command and its result, or a link to a run report.",
+            "type": "string",
+            "minLength": 10
+          },
+          "fix": {
+            "description": "The smallest change that would close the gap. A proposal, not a decision.",
+            "type": "string",
+            "minLength": 10
+          },
+          "scope": {
+            "description": "in-scope: fits the hard scope limits in CLAUDE.md. owner-decision: touches a decision listed in docs/NORTH-STAR.md and must not be built before it is made.",
+            "enum": ["in-scope", "owner-decision"]
+          },
+          "decision": {
+            "description": "Required when scope is owner-decision: which decision.",
+            "enum": ["license", "distribution", "scope", "launch"]
+          },
+          "size": { "enum": ["S", "M", "L"] }
+        }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runnable", "workspace"],
+      "properties": {
+        "runnable": {
+          "description": "full: an agent can execute every step unattended. partial: some steps are blocked or need something the runner may not have. spec-only: nothing to execute yet; run in plan mode.",
+          "enum": ["full", "partial", "spec-only"]
+        },
+        "workspace": {
+          "description": "scratch: the run creates a throwaway project outside this repository. none: the run only reads.",
+          "enum": ["scratch", "none"]
+        },
+        "schedule": {
+          "description": "Suggested cadence for an unattended run.",
+          "type": "string"
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "baseline": {
+      "description": "The most recent recorded run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result"],
+      "properties": {
+        "result": { "enum": ["pass", "fail", "blocked", "not-run"] },
+        "date": { "type": "string", "format": "date" },
+        "report": {
+          "description": "Repo-relative path to the run report.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

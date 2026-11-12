@@ -1,0 +1,144 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "probe-a-running-ui",
+  "revised": "2026-11-11",
+  "title": "Probe a running UI: the contract is the test plan, the agent is the harness",
+  "summary": "An agent drives any running AI interface in a real browser and judges it against a contract's MUST rules using only what a user or a screen reader could observe. It needs no source code, so it works on any framework, on a vendor's product, and on a competitor's.",
+  "status": "works-today",
+  "persona": {
+    "role": "Engineer who has to vouch for an AI interface they did not write",
+    "context": "The UI is an Angular app, a ServiceNow widget, or a vendor's embedded chat. The catalog's reference tests are bound to the reference DOM and cannot run against it.",
+    "goal": "A rule-by-rule verdict on real behavior, with evidence, in minutes, without porting a test suite."
+  },
+  "trigger": "They tell the agent: \"Here is the staging URL. Does the stop button behave the way it should?\"",
+  "advantage": {
+    "claim": "Conformance checking that does not care what the UI is built with or who built it.",
+    "versus": ["storybook-mcp", "figma-mcp", "patternbase", "ai-elements", "affora"],
+    "why_it_holds": "Each constraint is one atomic, observable statement, so an agent can turn it into a browser check without seeing the code. Storybook's test tool runs the stories a team already wrote for its own React components; Figma's server describes a design; the kits ship their own components. Affora publishes executable checks, but for interfaces that agents operate, which is a different question."
+  },
+  "contracts": [
+    {
+      "pattern": "interruption-cancel",
+      "constraints": [
+        "immediate-acknowledgment",
+        "no-silent-continuation",
+        "partial-work-honesty",
+        "completion-race-honest",
+        "cancel-not-gated",
+        "cancel-control-accessible",
+        "cancellation-announced",
+        "focus-not-lost"
+      ]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A browser automation tool is available to the agent (Playwright, or any tool that can click, press keys, and read the DOM and accessibility attributes).",
+    "A running page the persona is permitted to test. For an unattended run, build and serve this repository's static site (`npm --prefix site run build`, then any static file server on site/out) and use the path /patterns/interruption-cancel/, whose live demo renders the pattern."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Fetch the rules for the behavior under test.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "interruption-cancel" }
+      },
+      "expect": "interruption-cancel with the statement of every MUST and MUST_NOT.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "For each MUST and MUST_NOT, decide what a user or assistive technology could observe that would prove or disprove it, and say which rules cannot be observed from outside.",
+      "uses": { "kind": "judgment" },
+      "expect": "One observable signal per rule, for example an accessible name, visible text within a time bound, a native dialog event, live-region text, or document.activeElement. Rules that need control of the host are named as not observable.",
+      "available": true,
+      "gap": "no-portable-conformance-checks"
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Drive the page: start the work, activate the cancel control with the keyboard, and capture each signal before, during, and after the cancellation settles.",
+      "uses": { "kind": "external", "name": "Browser automation (Playwright or equivalent)" },
+      "expect": "A captured observation for every observable rule.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Run the negative control: repeat the probe after removing the work label from the cancel control's accessible name and removing the polite live region from the page.",
+      "uses": { "kind": "external", "name": "Browser automation (Playwright or equivalent)" },
+      "expect": "cancel-control-accessible and cancellation-announced now fail, and no other verdict changes.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Write the verdict table into the workspace.",
+      "uses": {
+        "kind": "edit",
+        "target": "PROBE-REPORT.md",
+        "where": "workspace",
+        "change": "One row per MUST-level constraint: id, level, verdict (pass, fail, not-evaluated), the observation that supports it, and for not-evaluated what would be needed."
+      },
+      "expect": "A report a reviewer can check against the page themselves.",
+      "available": true,
+      "gap": "unreachable-states-in-demo"
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "Every MUST and MUST_NOT has a verdict backed by an observation from the browser.",
+      "check": "PROBE-REPORT.md has one row per MUST-level constraint returned in s1, and every pass or fail row quotes what was observed."
+    },
+    {
+      "id": "c2",
+      "criterion": "No verdict depends on the implementation.",
+      "check": "The probe reads only roles, accessible names, visible text, ARIA attributes, focus, and browser events. It reads no component source and uses no test hook."
+    },
+    {
+      "id": "c3",
+      "criterion": "The probe can fail.",
+      "check": "In s4, exactly the two rules whose signals were removed flip to fail."
+    },
+    {
+      "id": "c4",
+      "criterion": "What could not be judged is said plainly.",
+      "check": "Any rule not observable from outside is marked not-evaluated with the reason. None is reported as pass by default."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "no-portable-conformance-checks",
+      "summary": "The proof is bound to the reference DOM: there is no stack-neutral statement of what to observe for each rule.",
+      "evidence": "Example: approval-gate explicit-consent has verification \"Unit test: no code path reaches the approve callback except activation of the approve control\". The baseline probe for interruption-cancel was written by hand; see docs/journeys/runs/2026-11-11-probe-interruption-cancel.cjs.",
+      "fix": "Record a black-box signal next to each constraint, so any agent derives the same check. Smallest version: a sentence per constraint in the contract. Largest: a published probe kit.",
+      "scope": "owner-decision",
+      "decision": "scope",
+      "size": "L"
+    },
+    {
+      "id": "unreachable-states-in-demo",
+      "summary": "Some rules cover states a user cannot reach on demand, so a black-box probe cannot judge them.",
+      "evidence": "Baseline run: completion-race-honest was not-evaluated because the demo offers no way to make the host finish while a cancel is pending.",
+      "fix": "Give each live demo a control for every state its contract lists, starting with a \"finish during cancel\" control on the interruption-cancel demo.",
+      "scope": "in-scope",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "partial",
+    "workspace": "scratch",
+    "schedule": "After every site deploy, against the deployed demos. On demand against any staging URL.",
+    "notes": "Partial only because it needs a browser tool. Two variants use the same steps. Vendor evaluation: point it at a vendor's trial before buying. Report card: probe several AI products the owner is permitted to test and publish the scores; whether to publish is the owner's call."
+  },
+  "baseline": {
+    "result": "pass",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

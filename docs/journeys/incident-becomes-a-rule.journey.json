@@ -1,0 +1,157 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "incident-becomes-a-rule",
+  "revised": "2026-11-11",
+  "title": "Incident becomes a rule: a catalog that learns from production",
+  "summary": "After a UX incident in a shipped AI feature, an agent works out whether an existing rule was broken or a rule was missing. A broken rule becomes a bug with a named test. A missing rule becomes a proposed constraint with a level, a reason, and a test, ready for the catalog.",
+  "status": "partial",
+  "persona": {
+    "role": "Engineer writing the postmortem for an AI feature that misbehaved",
+    "context": "A user pressed stop and the agent carried on. The team adopted the interruption-cancel pattern, so either their code broke a rule or the rule did not exist.",
+    "goal": "A postmortem action that is a rule with a test, not a paragraph of lessons learned."
+  },
+  "trigger": "They paste an incident summary to the agent and ask: \"Was this supposed to be impossible?\"",
+  "advantage": {
+    "claim": "Every incident can end as a rule with a test, and every adopter hears about it through their pin.",
+    "versus": ["hax-toolkit", "shape-of-ai", "spec-driven-dev"],
+    "why_it_holds": "Constraints are atomic, versioned, and carry a rationale, so an incident maps onto one or onto none, and a new one is a small reviewable diff. Guidelines and pattern galleries are revised editorially; spec-driven workflows write their rules per project, so one team's incident teaches no one else."
+  },
+  "contracts": [
+    {
+      "pattern": "interruption-cancel",
+      "constraints": ["no-silent-continuation", "cancel-control-accessible"]
+    },
+    { "pattern": "streaming-response", "constraints": ["interruptible"] }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project to hold the proposal."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Incident A: \"A user pressed Stop while the agent was sending follow-up emails. The button changed to Cancelling, then the progress indicator came back and two more emails went out.\" Find the pattern that governs this.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "the user pressed stop but the agent kept going and sent two more emails" }
+      },
+      "expect": "interruption-cancel ranked first, with its MUST statements.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Decide whether an existing rule forbids what happened in incident A.",
+      "uses": { "kind": "judgment" },
+      "expect": "Yes: no-silent-continuation. The conclusion is an implementation bug, and the agent names the test that should have failed.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Incident B: \"On a phone, the task output pushed the stop control off screen. The user could not find it while the agent was running.\" Find the pattern that governs this.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "search_patterns",
+        "input": { "query": "the stop button scrolled off screen while the agent was running" }
+      },
+      "expect": "interruption-cancel ranked first.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Read every constraint of the pattern, including SHOULD and MAY, which search does not return.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "interruption-cancel", "framework": "react" }
+      },
+      "expect": "The full constraints array.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Decide whether an existing rule covers incident B. If none does, draft the missing rule.",
+      "uses": { "kind": "judgment" },
+      "expect": "The agent states which constraints it considered and why none requires the control to stay reachable while work runs, then drafts one constraint: id, level, category, statement, rationale, verification.",
+      "available": true
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Write the proposal.",
+      "uses": {
+        "kind": "edit",
+        "target": "PROPOSAL.md",
+        "where": "workspace",
+        "change": "The incident in two sentences, the drafted constraint as JSON, the version bump it requires and why, the test name that would prove it, and which adopters it affects."
+      },
+      "expect": "A proposal the catalog owner can accept, change, or reject in one reading.",
+      "available": true
+    },
+    {
+      "id": "s7",
+      "actor": "persona",
+      "action": "Send the proposal to the catalog through a channel built for a missing or wrong rule.",
+      "uses": {
+        "kind": "read",
+        "target": "https://github.com/fauverism/agent-ux-contracts/issues/new/choose",
+        "where": "web"
+      },
+      "expect": "An issue form that asks for the incident, the pattern, the proposed constraint, and the suggested level.",
+      "available": false,
+      "gap": "no-rule-proposal-intake"
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "A covered incident is attributed to the rule that forbids it.",
+      "check": "The s2 conclusion names no-silent-continuation and a test name starting with that id."
+    },
+    {
+      "id": "c2",
+      "criterion": "An uncovered incident yields a well-formed constraint.",
+      "check": "The JSON in PROPOSAL.md has a kebab-case id not already in the contract, a level, a category, a statement containing the RFC 2119 keyword matching the level, a rationale, and a verification."
+    },
+    {
+      "id": "c3",
+      "criterion": "The version bump is classified correctly.",
+      "check": "PROPOSAL.md says major if the drafted rule is MUST or MUST_NOT, and minor if it is SHOULD, SHOULD_NOT, or MAY."
+    },
+    {
+      "id": "c4",
+      "criterion": "The proposal legislates only through the contract.",
+      "check": "The new requirement appears only as the drafted constraint. PROPOSAL.md's prose explains it and adds no further MUST or SHOULD."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "no-rule-proposal-intake",
+      "summary": "There is nowhere to send a proposed rule. The only issue link is a generic problem report.",
+      "evidence": "The repository has no .github/ISSUE_TEMPLATE directory. ISSUE_URL in site/lib/site.ts pre-fills where, what happened, and what you expected.",
+      "fix": "Add an issue form for a missing or wrong rule: incident, pattern id, proposed constraint, suggested level.",
+      "scope": "in-scope",
+      "size": "S"
+    },
+    {
+      "id": "no-contract-changelog",
+      "summary": "A changed hash says that a contract changed, not what changed or why.",
+      "evidence": "Contracts carry a version and a hash and no change record. See the pin-and-drift-watch journey.",
+      "fix": "Generate a change record per contract at build time and let an entry link to the issue that motivated it.",
+      "scope": "in-scope",
+      "size": "M"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "scratch",
+    "schedule": "On demand, per incident. As a regression check, run with the two fixture incidents after any change to interruption-cancel.",
+    "notes": "The runner never edits a contract. Accepting a proposal is the owner's decision and goes through /new-pattern or a contract revision with the bump the proposal names. Replace the two fixture incidents with a real one for real use."
+  },
+  "baseline": { "result": "not-run" }
+}

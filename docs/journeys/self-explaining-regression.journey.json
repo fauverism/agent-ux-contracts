@@ -1,0 +1,173 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "self-explaining-regression",
+  "revised": "2026-11-11",
+  "title": "Self-explaining regression: the failing test names the rule and the reason",
+  "summary": "Weeks after adoption, a different agent session makes a well-meant change that breaks a contract rule. The test that fails is named for the rule, the agent looks up why the rule exists, and it reverts instead of weakening the test.",
+  "status": "works-today",
+  "persona": {
+    "role": "Maintainer of a feature that adopted a pattern last quarter",
+    "context": "Nobody on the team remembers why the cancel button has no confirmation dialog. A new agent session has no memory of the original work.",
+    "goal": "A later change cannot quietly undo a behavior rule, and whoever trips it learns the reason without asking a person."
+  },
+  "trigger": "They ask a fresh agent session: \"Make cancelling safer. Ask the user to confirm first.\"",
+  "advantage": {
+    "claim": "Copied code that defends its own behavior and explains itself to the next agent.",
+    "versus": ["spec-driven-dev", "shadcn-registry", "ai-elements", "patternbase"],
+    "why_it_holds": "The scaffolded tests are named \"<constraint-id>: <behavior>\" and the contract carries a rationale per constraint, so a red test leads straight to the rule and its reason. Copy-paste kits sever the link to their source at copy time, and spec-driven workflows produce acceptance criteria as prose that secondary sources note do not run."
+  },
+  "contracts": [
+    {
+      "pattern": "interruption-cancel",
+      "constraints": ["cancel-not-gated", "immediate-acknowledgment"]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project created with `npm init -y`, containing a tsconfig.json whose compilerOptions set \"jsx\": \"react-jsx\"."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Establish the adopted state: scaffold the pattern.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "interruption-cancel", "framework": "react" }
+      },
+      "expect": "Files, verify, and constraints are returned.",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Write the returned files into the project unmodified.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/interruption-cancel/",
+        "where": "workspace",
+        "change": "Create one file per entry in the response's files array, with the returned content byte for byte."
+      },
+      "expect": "Four files exist in src/patterns/interruption-cancel/.",
+      "available": true
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Install the verify dependencies and confirm the starting point is green.",
+      "uses": {
+        "kind": "command",
+        "run": "npm i -D <verify.dependencies, space separated> && cd src/patterns/interruption-cancel && <verify.command>"
+      },
+      "expect": "Every test passes.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "As the later session: make the change the persona asked for.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/interruption-cancel/InterruptionCancel.tsx",
+        "where": "workspace",
+        "change": "Inside handleCancel, immediately before the line that sets the phase to cancel-requested, insert: if (!window.confirm('Stop this task?')) return;"
+      },
+      "expect": "The component now asks for confirmation before cancelling.",
+      "available": true
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Run the tests.",
+      "uses": { "kind": "command", "run": "cd src/patterns/interruption-cancel && <verify.command>" },
+      "expect": "The run fails, and at least one failing test name starts with cancel-not-gated.",
+      "available": true
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Look up the rule the failing test names, to learn its level and why it exists.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "interruption-cancel", "framework": "react" }
+      },
+      "expect": "The constraints array contains cancel-not-gated with level MUST_NOT and a rationale.",
+      "available": true,
+      "gap": "contract-not-vendored"
+    },
+    {
+      "id": "s7",
+      "actor": "agent",
+      "action": "Revert the change.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/patterns/interruption-cancel/InterruptionCancel.tsx",
+        "where": "workspace",
+        "change": "Remove the line inserted in s4. Change nothing else, and do not touch the test file."
+      },
+      "expect": "The component is byte-identical to the scaffolded version.",
+      "available": true
+    },
+    {
+      "id": "s8",
+      "actor": "agent",
+      "action": "Run the tests again.",
+      "uses": { "kind": "command", "run": "cd src/patterns/interruption-cancel && <verify.command>" },
+      "expect": "Every test passes.",
+      "available": true
+    },
+    {
+      "id": "s9",
+      "actor": "agent",
+      "action": "Explain to the persona why the change was not made and what would meet their real goal.",
+      "uses": { "kind": "judgment" },
+      "expect": "The explanation cites cancel-not-gated, gives the contract's rationale in its own words, and points at consent before side effects (approval-gate) as the place for a safety check.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "The failure names the rule that was broken.",
+      "check": "In the s5 output, a failing test's name starts with \"cancel-not-gated:\"."
+    },
+    {
+      "id": "c2",
+      "criterion": "The reason for the rule is one lookup away.",
+      "check": "s6 is a single tool call and its response contains a non-empty rationale for cancel-not-gated."
+    },
+    {
+      "id": "c3",
+      "criterion": "Reverting restores a fully green suite.",
+      "check": "s8 exits 0 with zero failing tests."
+    },
+    {
+      "id": "c4",
+      "criterion": "The agent did not weaken the proof to get green.",
+      "check": "The test file is byte-identical to the one returned in s1: no test edited, skipped, or deleted."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "contract-not-vendored",
+      "summary": "The rationale lives only in the catalog. A project that adopted a pattern holds the tests and the COMPLIANCE table but not the contract, so learning why a rule exists needs a tool call that also regenerates every file.",
+      "evidence": "The scaffold response's files array holds the component, the test file, setup-dom.mjs, and COMPLIANCE.md. No pattern.contract.json. Observed in the baseline run.",
+      "fix": "Include pattern.contract.json in the scaffolded files, so the reason travels with the code and survives without the server.",
+      "scope": "in-scope",
+      "size": "S"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "scratch",
+    "schedule": "After any change to a reference implementation or its tests.",
+    "notes": "The mutation in s4 is deliberate and exact so that runs are comparable. To widen coverage, add sibling journeys with a different mutation per pattern rather than changing this one."
+  },
+  "baseline": {
+    "result": "pass",
+    "date": "2026-11-11",
+    "report": "docs/journeys/runs/2026-11-11-baseline.md"
+  }
+}

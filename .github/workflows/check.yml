@@ -1,0 +1,50 @@
+name: Check
+
+# The gate described in AGENTS.md, run on every pull request and on main.
+# Everything here is deterministic: no secrets, no model calls.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The RSS feed reads per-pattern dates from git history.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp-server/package-lock.json
+            site/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci
+          npm --prefix mcp-server ci
+          npm --prefix site ci
+
+      - name: Gate (tests, contracts, typecheck, MCP tests and evals)
+        run: npm run check
+
+      - name: Site tests
+        run: npm --prefix site run test
+
+      - name: Site build (static export)
+        run: npm --prefix site run build

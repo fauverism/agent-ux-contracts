@@ -15,7 +15,8 @@ enterprise background (React, Angular, ServiceNow). Code quality bar is
 principal-level: accessible, typed, tested, no placeholder slop.
 
 ## Hard scope limits (do not expand without being asked)
-- 8 patterns in v1. No CLI. No database. No auth. No SaaS features.
+- 10 patterns in v1 (expanded from 8 by the owner). No CLI. No database.
+  No auth. No SaaS features.
 - MCP server: exactly 2 tools in v1.
 - Site: static, file-based, Next.js App Router + Base UI + Tailwind.
 
@@ -31,3 +32,23 @@ principal-level: accessible, typed, tested, no placeholder slop.
   in a COMPLIANCE.md per implementation.
 - Accessibility is a contract field, not an afterthought.
 - Prose tone: direct, practitioner-to-practitioner, no marketing fluff.
+
+## Working here
+How to work in this repo (the gate, conventions, gotchas) lives in AGENTS.md,
+imported here so every Claude session loads it:
+
+@AGENTS.md
+
+## Orientation
+- `docs/NORTH-STAR.md` is the intent doc: audience, launch blockers, open owner
+  decisions, and the rules for choosing what to work on. Read it before
+  proposing new work. Ask about anything listed there as an open decision.
+- `docs/CLAUDE-PLAYBOOK.md` lists the project skills (`/catch-up`,
+  `/drift-check`, `/run-journey`, `/new-pattern`, `/ship`), the
+  `contract-auditor` subagent, and the automations around this repo.
+- `docs/journeys/` holds the product's use cases as runnable journey files.
+  A feature idea is not ready to build until it is a journey with a persona,
+  steps, and checks. `node scripts/validate-journeys.mjs --gaps` lists what
+  blocks them.
+- Do not put test counts or other volatile numbers in standing docs. Link to
+  the command that prints them.

@@ -23,7 +23,7 @@ and logs which ones failed. Design decisions and trade-offs: [DESIGN.md](DESIGN.
 cd mcp-server
 npm install
 npm run build      # emits dist/
-npm run check      # 32 tests + typecheck
+npm run check      # tests + typecheck + search evals
 ```
 
 ### Claude Code
@@ -121,11 +121,11 @@ Options never remove MUST-implementing code — see the amendment note in
 
 ```bash
 npm test       # 32 unit/integration tests
-npm run eval   # 19-case search scorecard (realistic agent queries)
+npm run eval   # search scorecard (realistic agent queries)
 npm run check  # both, plus typecheck — the gate
 ```
 
-32 tests: loader rejects invalid contracts with reasons; search ranking
+The tests: loader rejects invalid contracts with reasons; search ranking
 sanity (including the dontUseWhen caution and the never-empty fallback);
 scaffold determinism, option transforms, and structured errors;
 **generated React code is typechecked in a temp project and generated
@@ -137,6 +137,6 @@ pattern × framework; and an end-to-end pass over real stdio.
 The eval harness ([evals/](evals/)) runs product-language queries an agent
 would actually send ("loading state for AI chat", misspellings, off-topic
 queries that must hit the category fallback) and prints a pass/fail
-scorecard — 19/19 at ship. Ranking changes must keep the scorecard green;
+scorecard that must stay at 100%. Ranking changes must keep the scorecard green;
 tuning history lives in [DESIGN.md](DESIGN.md) amendments. Demo recording
 script: [DEMO.md](DEMO.md).

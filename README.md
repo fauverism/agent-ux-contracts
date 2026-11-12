@@ -46,6 +46,10 @@ machine-readable spec, not an appendix.
 | [AGENTS.md](AGENTS.md) | How to work in this repo (the check gate, conventions, gotchas) — for agents and the humans steering them. |
 | [docs/adr/](docs/adr/) | Why the load-bearing decisions were made. |
 | [CLAUDE.md](CLAUDE.md) | The brief: thesis and scope. |
+| [docs/NORTH-STAR.md](docs/NORTH-STAR.md) | Intent: who it is for, what blocks launch, how to choose work. Start here after time away. |
+| [docs/CLAUDE-PLAYBOOK.md](docs/CLAUDE-PLAYBOOK.md) | Working on this repo with Claude: skills, subagent, hook, CI, automations. |
+| [docs/journeys/](docs/journeys/README.md) | What people can do with the catalog, as journey files an agent can run, with the gaps each one hits. |
+| [docs/research/landscape.md](docs/research/landscape.md) | Who else is near this, and where this wins. A dated survey. |
 | [PROGRESS.md](PROGRESS.md) | Current status and what's next. |
 | [patterns/TEMPLATE.md](patterns/TEMPLATE.md) | The mechanical procedure to author a pattern. |
 | [mcp-server/DESIGN.md](mcp-server/DESIGN.md) | MCP-internal decisions and amendments. |
@@ -54,9 +58,9 @@ machine-readable spec, not an appendix.
 
 ```bash
 npm test           # schema behavior suite (ajv strict mode + mutation tests)
-npm run validate   # every contract: schema + referential integrity + compliance files
+npm run validate   # every contract (schema, referential integrity, compliance files) and every journey
 npm run typecheck  # React reference implementations
-npm run check      # all of the above
+npm run check      # all of the above, plus the MCP server gate and the site typecheck
 ```
 
 The schema enforces what schemas can: RFC-2119 keyword/level consistency,
@@ -68,8 +72,8 @@ exists with a compliance report, and that every contract state is accounted
 for in each implementation — present in the source or documented as an
 explicit deviation in its COMPLIANCE.md.
 
-## Roadmap
+## Status and roadmap
 
-- `mcp-server/` — `search_patterns` and `scaffold_pattern` tools so agents
-  consume contracts at generation time
-- `site/` — static docs site generated from contract + prose
+The catalog, the MCP server, and the site are built and the gate is green.
+What stands between this and a launched product, and the decisions still
+open, are in [docs/NORTH-STAR.md](docs/NORTH-STAR.md).

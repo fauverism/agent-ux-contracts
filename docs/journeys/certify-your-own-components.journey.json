@@ -1,0 +1,160 @@
+{
+  "$schema": "./journey.schema.json",
+  "id": "certify-your-own-components",
+  "revised": "2026-11-11",
+  "title": "Certify your own components: adopt the rules without adopting the stack",
+  "summary": "A design-system team keeps its own components and takes only the contract. An agent implements the pattern in the team's stack, proves every MUST against it, and the component earns a place in the catalog that agents render from at runtime.",
+  "status": "partial",
+  "persona": {
+    "role": "Design-system engineer registering components for agent-rendered UI",
+    "context": "The team's stack is not React, or it is React with its own component library. They are building the catalog a generative-UI protocol renders from, where an agent places components at runtime and nobody reviews each render.",
+    "goal": "An approval component in their own stack that provably satisfies the approval-gate contract, with a compliance record they own."
+  },
+  "trigger": "They tell the agent: \"Build our approval component to this contract. Do not copy the reference code.\"",
+  "advantage": {
+    "claim": "The rules are separable from the code, so a team can be held to them in any stack.",
+    "versus": ["ai-elements", "assistant-ui", "patternbase", "a2ui"],
+    "why_it_holds": "The contract is JSON; the React and vanilla implementations are two projections of it. AI Elements requires Next.js, the AI SDK, shadcn/ui, and Tailwind; assistant-ui and PatternBase ship React components. A2UI says agents place only the components a developer registered and leaves how those components must behave to the developer's catalog."
+  },
+  "contracts": [
+    {
+      "pattern": "approval-gate",
+      "constraints": [
+        "explicit-consent",
+        "accurate-preview",
+        "no-preselected-approve",
+        "irreversible-labeled",
+        "controls-accessible",
+        "gate-announced"
+      ]
+    }
+  ],
+  "preconditions": [
+    "The catalog's two MCP tools are callable (see RUNNER.md, Connecting the catalog).",
+    "A scratch project. For an unattended run the team's stack is stood in for by a dependency-free custom element named approval-request, so that nothing from the reference implementation can be reused."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "actor": "agent",
+      "action": "Fetch the full constraint list with rationale and verification for each rule.",
+      "uses": {
+        "kind": "mcp-tool",
+        "tool": "scaffold_pattern",
+        "input": { "pattern_id": "approval-gate", "framework": "vanilla" }
+      },
+      "expect": "A constraints array with id, level, statement, rationale, and verification for every rule. The returned files are not used.",
+      "available": true,
+      "gap": "contract-not-fetchable"
+    },
+    {
+      "id": "s2",
+      "actor": "agent",
+      "action": "Read the parts of the contract the tool response leaves out: states and transitions, the keyboard table, and the screen reader expectations.",
+      "uses": {
+        "kind": "read",
+        "target": "patterns/approval-gate/pattern.contract.json",
+        "where": "repo"
+      },
+      "expect": "The states array and the accessibility block (wcagCriteria, keyboard, screenReader, focusManagement, reducedMotion).",
+      "available": true,
+      "gap": "contract-not-fetchable"
+    },
+    {
+      "id": "s3",
+      "actor": "agent",
+      "action": "Implement the pattern in the team's stack, leaving a comment naming the constraint at each place a rule is satisfied.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/approval-request.js",
+        "where": "workspace",
+        "change": "Write the component from the contract alone. Do not copy any file returned in s1."
+      },
+      "expect": "A component covering every state in the contract.",
+      "available": true
+    },
+    {
+      "id": "s4",
+      "actor": "agent",
+      "action": "Write one test per MUST and MUST_NOT against the new component, named \"<constraint-id>: <behavior>\", plus an axe-core pass in each state.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/approval-request.test.mjs",
+        "where": "workspace",
+        "change": "Author the tests against the team's own DOM. The reference tests may be consulted for what to assert, not copied."
+      },
+      "expect": "A test file where every MUST-level constraint id appears as a test-name prefix.",
+      "available": true,
+      "gap": "no-portable-conformance-checks"
+    },
+    {
+      "id": "s5",
+      "actor": "agent",
+      "action": "Run the tests.",
+      "uses": { "kind": "command", "run": "node --test src/approval-request.test.mjs" },
+      "expect": "Every test passes.",
+      "available": true
+    },
+    {
+      "id": "s6",
+      "actor": "agent",
+      "action": "Write the team's own compliance record.",
+      "uses": {
+        "kind": "edit",
+        "target": "src/COMPLIANCE.md",
+        "where": "workspace",
+        "change": "A header pinning the contract version and hash from s1, then a table: constraint, level, how it is satisfied, the test that proves it. Add a deviations section, empty or not."
+      },
+      "expect": "One row per constraint and a pin.",
+      "available": true
+    }
+  ],
+  "success": [
+    {
+      "id": "c1",
+      "criterion": "Every MUST and MUST_NOT is proven against the team's own component.",
+      "check": "For each MUST-level constraint id from s1, a passing test in s5 has a name starting with that id."
+    },
+    {
+      "id": "c2",
+      "criterion": "Nothing was copied from the reference implementation.",
+      "check": "No file in the workspace is identical to, or a renamed copy of, a file returned in s1."
+    },
+    {
+      "id": "c3",
+      "criterion": "The compliance record is complete and pinned.",
+      "check": "src/COMPLIANCE.md has one row per constraint in the contract and carries the version and full contract_hash from s1."
+    },
+    {
+      "id": "c4",
+      "criterion": "The whole contract was obtainable without a clone of the catalog.",
+      "check": "s2 was satisfied from a tool response or a public URL, not from a file in a local checkout."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "contract-not-fetchable",
+      "summary": "A whole contract cannot be fetched without cloning the repository: the scaffold response omits states and the accessibility block, and there is no public URL.",
+      "evidence": "Baseline probe: the scaffold_pattern response for approval-gate has no accessibility or states field and no pattern.contract.json among its files. The site, which renders the JSON in its Agent view, is not deployed.",
+      "fix": "Serve each pattern.contract.json as a static file at a stable URL on the site and list them in an llms.txt.",
+      "scope": "in-scope",
+      "size": "M"
+    },
+    {
+      "id": "no-portable-conformance-checks",
+      "summary": "The proof is bound to the reference DOM: there is no stack-neutral statement of what to observe for each rule.",
+      "evidence": "The scaffolded tests query class names and elements of the reference components, for example container.querySelector('.approval-gate') in patterns/approval-gate/react/ApprovalGate.test.tsx.",
+      "fix": "Record a black-box signal per constraint so the same check can be derived in any stack. See the probe-a-running-ui journey, which already works this way by hand.",
+      "scope": "owner-decision",
+      "decision": "scope",
+      "size": "L"
+    }
+  ],
+  "automation": {
+    "runnable": "full",
+    "workspace": "scratch",
+    "schedule": "On demand. Worth one run per contract revision that adds or changes a MUST.",
+    "notes": "The custom-element stand-in keeps the run honest: an agent cannot pass by reusing reference code. A real team replaces it with their own stack and may verify with the probe-a-running-ui journey instead of unit tests."
+  },
+  "baseline": { "result": "not-run" }
+}
