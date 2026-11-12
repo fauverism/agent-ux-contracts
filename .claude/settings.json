@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run check)",
+      "Bash(npm test)",
+      "Bash(npm run validate)",
+      "Bash(npm run typecheck)",
+      "Bash(npm --prefix mcp-server run check)",
+      "Bash(npm --prefix mcp-server run eval)",
+      "Bash(npm --prefix site run typecheck)",
+      "Bash(npm --prefix site run build)",
+      "Bash(npm --prefix site run test)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/validate-contract.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}
