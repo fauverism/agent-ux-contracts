@@ -378,6 +378,48 @@ Approved design, adjusted where implementation proved a decision wrong:
     Gate: 56 cases added to `evals/cases.ts` with two new expectation kinds,
     `caution_only` and `no_cautions`.
 
+18. **Bad input gets enough in-band content to recover in one step
+    (2026-11-12).** 53 bad calls were sent over stdio: ids near and far from
+    real ones, unsupported frameworks, invalid options, empty and off-topic
+    queries, wrong shapes. For 16 of them an agent could not recover from
+    the response alone, in four ways. *Unrelated guesses:* `did_you_mean`
+    and `nearest.suggestions` came from a 0.7-threshold fuzzy match that
+    offered three ids for almost any string ("voice-input" → confidence-
+    indicator; a blank id → the first three alphabetically), and listed the
+    wrong pattern first for an alias ("citations" → generation-control).
+    *Dead ends:* an id close to nothing returned an empty `did_you_mean` and
+    told the agent to pick from it. *Unexplained empties:* a query of
+    blanks or filler words, an unsupported `framework`, and a `category`
+    that excluded the match all returned the same shape as "not in the
+    catalog". *Silent drops:* an argument neither tool has (`outputDir`,
+    `limit`) was ignored and the call succeeded.
+    *Decisions.* `did_you_mean` is built best-first from the id with its
+    spelling normalized, then patterns the string names (through the
+    ranker, so aliases resolve), then near-typos at a 0.4 threshold; it is
+    empty when nothing is close. `PATTERN_NOT_FOUND` always carries
+    `available_patterns`, and its `next_action` says not to substitute an
+    unrelated pattern. `FRAMEWORK_UNSUPPORTED` carries `did_you_mean` for a
+    recognizable misspelling ("React", "vanilla-js", "javascript") and
+    otherwise names the porting route (scaffold vanilla; the constraints
+    array is the specification). `OPTIONS_INVALID` adds
+    `available_with_framework` when the option exists for the pattern under
+    another framework. An empty search always carries an `advisory` that
+    says which of four things happened: no searchable words, nothing
+    matched, a filter excluded the match (with what matches without it), or
+    the framework is not one the catalog has. Both tools' input objects are
+    strict, matching the `additionalProperties: false` they already
+    advertised.
+    *Alternatives:* (a) normalize silently (accept "React", "approval_gate")
+    — hides the exact spelling the agent will need again; the error teaches
+    it once; (b) turn an unsupported framework on search into an error —
+    amendment 3 chose a result shape for search and tests rely on it;
+    (c) convert the SDK's input-validation errors into the structured
+    `{ code, message, next_action }` shape — they are raised before the
+    handler runs, so it would mean loosening the input schema; left as is,
+    since each already names the argument and the expectation.
+    *Not changed:* no field was removed or renamed, and no output schema
+    changed; `advisory` already existed and error context is free-form.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

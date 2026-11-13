@@ -89,3 +89,30 @@ test('e2e: failures arrive as in-band structured errors, not protocol errors', a
   assert.ok(payload.error.next_action.length > 0);
   assert.deepEqual(payload.error.supported, ['react', 'vanilla']);
 });
+
+test('e2e: an argument the tool does not have is rejected by name, not dropped silently', async () => {
+  // Before amendment 18 these calls succeeded and ignored the extra key, so
+  // an agent could believe files went to "src" or that it would get 10 results.
+  const cases: Array<[string, Record<string, unknown>, string]> = [
+    ['scaffold_pattern', { pattern_id: 'approval-gate', framework: 'react', outputDir: 'src' }, 'outputDir'],
+    ['search_patterns', { query: 'stop button', limit: 10 }, 'limit'],
+  ];
+  for (const [name, args, key] of cases) {
+    const result = await client.callTool({ name, arguments: args });
+    assert.equal(result.isError, true, `${name} rejects ${key}`);
+    const text = (result.content as Array<{ text: string }>)[0].text;
+    assert.match(text, /Unrecognized key/);
+    assert.match(text, new RegExp(key));
+  }
+});
+
+test('e2e: an empty search explains itself in the response a client receives', async () => {
+  const result = await client.callTool({
+    name: 'search_patterns',
+    arguments: { query: 'stop button', framework: 'vue' },
+  });
+  assert.ok(!result.isError);
+  const structured = result.structuredContent as { results: unknown[]; advisory?: string };
+  assert.equal(structured.results.length, 0);
+  assert.match(structured.advisory ?? '', /No pattern is implemented for framework "vue"/);
+});

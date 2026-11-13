@@ -8,13 +8,14 @@ import { join } from 'node:path';
 import { ToolError } from './errors.js';
 import type { Catalog, LoadedPattern } from './types.js';
 import {
+  PATTERN_OPTIONS,
   applyPatternOptions,
   describeOptions,
   optionsSchemaFor,
   type Framework,
 } from './options.js';
 import { COMPLIANCE_NOTES } from './compliance-notes.js';
-import { nearestIds } from './search.js';
+import { frameworkGuess, nearestIds } from './search.js';
 
 export interface ScaffoldedFile {
   path: string;
@@ -120,11 +121,24 @@ function resolvePattern(catalog: Catalog, patternId: string): LoadedPattern {
       { pattern_id: patternId },
     );
   }
+  // Recovery in one step (DESIGN.md amendment 18): candidates only when one
+  // is genuinely close, and always the full id list, so "no such pattern"
+  // never needs a second call to learn what does exist.
+  const candidates = nearestIds(catalog, patternId);
+  const available = [...catalog.patterns.keys()].sort();
   throw new ToolError(
     'PATTERN_NOT_FOUND',
-    `unknown pattern "${patternId}"`,
-    'Pick an id from did_you_mean, or call search_patterns to find the right pattern.',
-    { pattern_id: patternId, did_you_mean: nearestIds(catalog, patternId) },
+    patternId.trim() === ''
+      ? 'pattern_id is blank'
+      : `unknown pattern "${patternId}"`,
+    candidates.length > 0
+      ? `Retry with "${candidates[0]}" if that is what you meant` +
+          (candidates.length > 1 ? ' (other candidates are in did_you_mean)' : '') +
+          '. available_patterns lists every valid id.'
+      : 'No pattern id is close to this one. available_patterns lists every valid id; call ' +
+          'search_patterns with a description of the need to choose one. If none fits, the ' +
+          'catalog has no pattern for it — do not substitute an unrelated pattern.',
+    { pattern_id: patternId, did_you_mean: candidates, available_patterns: available },
   );
 }
 
@@ -138,11 +152,20 @@ export function scaffoldPattern(
   const contract = pattern.contract;
 
   if (!contract.implementations.includes(framework)) {
+    const guess = frameworkGuess(framework, contract.implementations);
     throw new ToolError(
       'FRAMEWORK_UNSUPPORTED',
       `framework "${framework}" not available for ${patternId}; available: ${contract.implementations.join(', ')}`,
-      `Re-run with one of: ${contract.implementations.join(', ')}.`,
-      { pattern_id: patternId, supported: contract.implementations },
+      guess
+        ? `Retry with framework "${guess}" (names are lowercase and exact).`
+        : `There is no ${framework.trim() || 'such'} implementation of any pattern. Retry with ` +
+            `"vanilla" (plain JavaScript, no framework) to wrap or port it; the constraints ` +
+            `array in that response is the specification a port must meet. Or use "react".`,
+      {
+        pattern_id: patternId,
+        supported: contract.implementations,
+        ...(guess ? { did_you_mean: guess } : {}),
+      },
     );
   }
   const fw = framework as Framework;
@@ -150,13 +173,34 @@ export function scaffoldPattern(
   const schema = optionsSchemaFor(patternId, fw);
   const parsed = schema.safeParse(rawOptions);
   if (!parsed.success) {
+    // An option that exists for this pattern under another framework is not
+    // "unknown" — say where it does work (DESIGN.md amendment 18).
+    const unknownKeys = parsed.error.issues.flatMap((i) =>
+      i.code === 'unrecognized_keys' ? i.keys : [],
+    );
+    const elsewhere: Record<string, string[]> = {};
+    for (const key of unknownKeys) {
+      const spec = PATTERN_OPTIONS[patternId]?.[key];
+      if (spec && !spec.frameworks.includes(fw)) elsewhere[key] = [...spec.frameworks];
+    }
+    const elsewhereNote = Object.entries(elsewhere)
+      .map(([key, fws]) => `"${key}" exists for ${patternId} only with framework ${fws.join(' or ')}`)
+      .join('; ');
     throw new ToolError(
       'OPTIONS_INVALID',
       `invalid options for ${patternId} (${fw}): ${parsed.error.issues
         .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
-        .join('; ')}`,
-      'Correct the options and retry; option_schema lists what this pattern accepts.',
-      { pattern_id: patternId, option_schema: describeOptions(patternId, fw) },
+        .join('; ')}` + (elsewhereNote ? `. ${elsewhereNote}` : ''),
+      elsewhereNote
+        ? `Drop the option, or re-run with the framework that supports it. option_schema ` +
+            `lists what ${patternId} accepts for ${fw}.`
+        : 'Correct the options and retry; option_schema lists every option this pattern ' +
+            'accepts for this framework, and nothing else is accepted.',
+      {
+        pattern_id: patternId,
+        option_schema: describeOptions(patternId, fw),
+        ...(Object.keys(elsewhere).length > 0 ? { available_with_framework: elsewhere } : {}),
+      },
     );
   }
   const options = parsed.data as Record<string, unknown>;

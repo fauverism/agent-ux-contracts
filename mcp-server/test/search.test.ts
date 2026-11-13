@@ -92,3 +92,51 @@ test('nearestIds: typo distance produces did-you-mean candidates', () => {
   const ids = nearestIds(catalog, 'streaming-respons');
   assert.ok(ids.includes('streaming-response'), `got: ${ids.join(', ')}`);
 });
+
+// --- recovery content for bad input (DESIGN.md amendment 18) ---
+
+test('recovery: a query with no searchable words says so and suggests nothing', () => {
+  for (const query of ['   ', 'how can I make this', '???', 'ui']) {
+    const outcome = searchPatterns(catalog, provider, query);
+    assert.equal(outcome.results.length, 0, query);
+    assert.match(outcome.advisory ?? '', /no searchable words/, query);
+    assert.deepEqual(outcome.nearest?.suggestions, [], `${query}: no made-up suggestions`);
+    assert.equal(outcome.nearest?.categories.length, 5);
+  }
+});
+
+test('recovery: an off-catalog query is told the catalog may not cover it, with no unrelated suggestions', () => {
+  const outcome = searchPatterns(catalog, provider, 'kubernetes pod autoscaling configuration');
+  assert.equal(outcome.results.length, 0);
+  assert.match(outcome.advisory ?? '', /Nothing in the catalog matched/);
+  assert.match(outcome.advisory ?? '', /does not cover this need/);
+  assert.deepEqual(outcome.nearest?.suggestions, []);
+});
+
+test('recovery: a category filter that excludes the match names the filter and the match', () => {
+  const outcome = searchPatterns(catalog, provider, 'citations', { category: 'control' });
+  assert.equal(outcome.results.length, 0);
+  assert.match(outcome.advisory ?? '', /No match within category "control"/);
+  assert.match(outcome.advisory ?? '', /source-attribution \(transparency\)/);
+  assert.deepEqual(outcome.nearest?.suggestions, ['source-attribution']);
+});
+
+test('recovery: an unsupported framework filter names the supported ones and what the query matches', () => {
+  const vue = searchPatterns(catalog, provider, 'stop button', { framework: 'vue' });
+  assert.equal(vue.results.length, 0);
+  assert.match(vue.advisory ?? '', /No pattern is implemented for framework "vue"/);
+  assert.match(vue.advisory ?? '', /react, vanilla/);
+  assert.ok(vue.nearest?.suggestions.includes('interruption-cancel'));
+
+  const cased = searchPatterns(catalog, provider, 'stop button', { framework: 'React' });
+  assert.match(cased.advisory ?? '', /Did you mean "react"\?/);
+});
+
+test('nearestIds: an alias resolves to its pattern first; unrelated strings get no candidates', () => {
+  assert.equal(nearestIds(catalog, 'citations')[0], 'source-attribution');
+  assert.equal(nearestIds(catalog, 'ApprovalGate')[0], 'approval-gate');
+  assert.equal(nearestIds(catalog, 'approval_gate')[0], 'approval-gate');
+  for (const id of ['voice-input', 'xyzzy', 'diff-based-editing', ' ']) {
+    assert.deepEqual(nearestIds(catalog, id), [], `"${id}" is close to nothing`);
+  }
+});
