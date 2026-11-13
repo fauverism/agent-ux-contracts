@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "interruption-cancel",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Interruption / Cancel",
   "summary": "Cancel side-effectful agent work with immediate acknowledgment, an honest account of what already happened, and no silent continuation after the user says stop.",
   "status": "draft",
@@ -29,9 +29,9 @@
     "Cancellation maps to a real host mechanism (AbortController, job cancellation) that stops future work"
   ],
   "dontUseWhen": [
-    "The work is effectively instantaneous and a cancel control could never be reached in time",
+    "The work is effectively instantaneous — it finishes instantly — and a cancel control could never be reached in time",
     "Only the rendering of a text stream needs stopping — streaming-response owns that case",
-    "Cancellation cannot actually stop anything; a fake cancel is worse than none"
+    "Cancellation cannot actually stop anything — once the job starts the backend keeps running, and the control only hides the spinner; a fake cancel is worse than none"
   ],
   "anatomy": [
     {

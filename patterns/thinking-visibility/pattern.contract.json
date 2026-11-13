@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "thinking-visibility",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Thinking Visibility",
   "summary": "Expose the model's intermediate reasoning in a collapsible, clearly-labeled region so long waits feel accountable without letting working notes masquerade as the answer.",
   "status": "draft",
@@ -15,9 +15,9 @@
     "Users benefit from auditing how the model reached its conclusion"
   ],
   "dontUseWhen": [
-    "No intermediate reasoning is available from the model or API",
+    "No intermediate reasoning is available from the model or API: it returns only the final answer, with no thinking tokens",
     "Responses are near-instant and a reasoning region would add noise without value",
-    "The audience would mistake raw reasoning for the product's official answer despite labeling"
+    "The audience would mistake raw reasoning for the product's official answer despite labeling — customers would read the scratch work as the company's actual reply even when it is labelled"
   ],
   "anatomy": [
     {

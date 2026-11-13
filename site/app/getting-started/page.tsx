@@ -48,7 +48,7 @@ const SEARCH_RESULT = `{
       "id": "streaming-response",
       "name": "Streaming Response",
       "intent": "Render model output progressively as tokens arrive, keeping the page readable, interruptible, and accessible while content is in flight.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "score": 0.756,
       "rationale": "Alias match: \\"AI loading state\\".",
       "constraints": {

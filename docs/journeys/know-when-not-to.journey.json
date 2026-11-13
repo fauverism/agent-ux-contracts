@@ -1,7 +1,7 @@
 {
   "$schema": "./journey.schema.json",
   "id": "know-when-not-to",
-  "revised": "2026-11-11",
+  "revised": "2026-11-12",
   "title": "Know when not to: the catalog argues against itself",
   "summary": "An agent asks for a pattern in a situation the pattern's own contract excludes, or for something the catalog does not cover. The catalog says so at the moment of generation, and the agent recommends against building it.",
   "status": "partial",
@@ -35,8 +35,7 @@
         "input": { "query": "confirm before a low-risk reversible action" }
       },
       "expect": "approval-gate is returned with a caution quoting its exclusion for trivially reversible, low-stakes actions. No other result carries a caution.",
-      "available": true,
-      "gap": "caution-misses-paraphrase"
+      "available": true
     },
     {
       "id": "s2",
@@ -60,8 +59,7 @@
         "input": { "query": "ask permission before a read-only operation" }
       },
       "expect": "approval-gate ranks first and carries a caution quoting its read-only exclusion.",
-      "available": true,
-      "gap": "substring-matching-noise"
+      "available": true
     },
     {
       "id": "s4",
@@ -113,20 +111,13 @@
   ],
   "gaps": [
     {
-      "id": "caution-misses-paraphrase",
-      "summary": "The caution is suppressed when the query's words score better against a pattern's other fields than against its exclusion text.",
-      "evidence": "Baseline run: \"confirm before a low-risk reversible action\" returns approval-gate first with no caution, although its first dontUseWhen entry is \"The action is trivially reversible and low-stakes\". The logic is in mcp-server/src/search.ts (caution only when a token's best hit is the exclusion text).",
-      "fix": "Add this query to mcp-server/evals/cases.ts as a caution case, then revisit the suppression rule under a DESIGN.md amendment. Contract aliases for the exclusion vocabulary (low-risk, undoable) may be enough.",
-      "scope": "in-scope",
+      "id": "caution-needs-anticipated-wording",
+      "summary": "The caution fires only when the query shares at least two content words with one exclusion entry. A paraphrase that uses none of the contract's words draws no caution.",
+      "evidence": "Measured 2026-11-12 over stdio (mcp-server/DESIGN.md amendment 17). On 100 queries the exclusion wording was tuned against, 49 of 50 excluded-case queries draw the right caution and 2 queries draw a caution on another pattern. On 60 fresh queries written afterwards, 3 of 30 excluded-case queries draw a caution, with no false alarm on the target pattern.",
+      "fix": "Harvest real missed queries into the dontUseWhen wording with patch bumps, as amendment 17 did. Reaching unseen paraphrases needs the embeddings provider deferred to v1.1 behind SearchProvider.",
+      "scope": "owner-decision",
+      "decision": "scope",
       "size": "M"
-    },
-    {
-      "id": "substring-matching-noise",
-      "summary": "Substring matching produces false cautions and a wrong top result.",
-      "evidence": "Baseline run: \"reversible\" matches \"irreversible\" and puts a caution on streaming-response; \"ask permission before a read-only operation\" ranks interruption-cancel first on the alias \"stop task\", where \"ask\" is a substring of \"task\".",
-      "fix": "Match on token boundaries for cautions and alias hits, and add both queries to the evals as no_caution and top-result cases.",
-      "scope": "in-scope",
-      "size": "S"
     }
   ],
   "automation": {

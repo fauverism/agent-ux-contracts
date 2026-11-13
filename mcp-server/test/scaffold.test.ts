@@ -55,7 +55,7 @@ test('determinism: same input produces byte-identical output', () => {
 test('response shape: version, hash, constraints array, and roles are present', () => {
   const result = scaffoldPattern(catalog, 'approval-gate', 'react');
   assert.equal(result.pattern_id, 'approval-gate');
-  assert.equal(result.version, '0.1.1');
+  assert.equal(result.version, '0.1.2');
   assert.match(result.contract_hash, /^[0-9a-f]{64}$/);
   assert.ok(result.constraints.length > 0, 'full constraints array included');
   assert.deepEqual(
@@ -261,6 +261,65 @@ test('errors: unknown options return OPTIONS_INVALID with the option schema', ()
     const schema = err.context.option_schema as Record<string, string>;
     assert.ok('maxLength' in schema, 'option schema names what is accepted');
   }
+});
+
+// --- recovery content for bad input (DESIGN.md amendment 18) ---
+
+const toolError = (run: () => unknown): Record<string, unknown> => {
+  try {
+    run();
+  } catch (err) {
+    assert.ok(err instanceof ToolError);
+    return err.toPayload().error;
+  }
+  return assert.fail('expected a ToolError');
+};
+
+test('recovery: an id close to nothing gets no candidates, every valid id, and a warning not to substitute', () => {
+  for (const id of ['voice-input', 'xyzzy', 'diff-based-editing']) {
+    const error = toolError(() => scaffoldPattern(catalog, id, 'react'));
+    assert.equal(error.code, 'PATTERN_NOT_FOUND');
+    assert.deepEqual(error.did_you_mean, [], `${id}: no unrelated guess`);
+    assert.deepEqual(error.available_patterns, [...catalog.patterns.keys()].sort());
+    assert.match(String(error.next_action), /do not substitute an unrelated pattern/);
+  }
+  const blank = toolError(() => scaffoldPattern(catalog, ' ', 'react'));
+  assert.equal(blank.message, 'pattern_id is blank');
+  assert.deepEqual(blank.did_you_mean, []);
+});
+
+test('recovery: an alias used as an id points at its pattern', () => {
+  const error = toolError(() => scaffoldPattern(catalog, 'citations', 'react'));
+  assert.deepEqual(error.did_you_mean, ['source-attribution']);
+  assert.match(String(error.next_action), /Retry with "source-attribution"/);
+});
+
+test('recovery: a misspelled framework gets the exact spelling; a missing one gets the porting route', () => {
+  for (const [given, want] of [['React', 'react'], ['vanilla-js', 'vanilla'], ['javascript', 'vanilla']]) {
+    const error = toolError(() => scaffoldPattern(catalog, 'approval-gate', given));
+    assert.equal(error.code, 'FRAMEWORK_UNSUPPORTED');
+    assert.equal(error.did_you_mean, want, given);
+    assert.match(String(error.next_action), new RegExp(`Retry with framework "${want}"`));
+  }
+  const vue = toolError(() => scaffoldPattern(catalog, 'approval-gate', 'vue'));
+  assert.equal(vue.did_you_mean, undefined);
+  assert.match(String(vue.next_action), /Retry with "vanilla"/);
+  assert.match(String(vue.next_action), /constraints array/);
+});
+
+test('recovery: an option that exists under another framework says which one', () => {
+  const error = toolError(() =>
+    scaffoldPattern(catalog, 'streaming-response', 'react', { tokenBatching: true }),
+  );
+  assert.equal(error.code, 'OPTIONS_INVALID');
+  assert.deepEqual(error.available_with_framework, { tokenBatching: ['vanilla'] });
+  assert.match(String(error.message), /only with framework vanilla/);
+
+  // An option that exists nowhere for this pattern gets no such hint.
+  const unknown = toolError(() =>
+    scaffoldPattern(catalog, 'streaming-response', 'react', { outputDir: 'src' }),
+  );
+  assert.equal(unknown.available_with_framework, undefined);
 });
 
 // --- generated code must actually work ---

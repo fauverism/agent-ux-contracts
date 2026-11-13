@@ -2,6 +2,7 @@
  * MCP server wiring — two tools, stdio transport (DESIGN.md).
  * All logging goes to stderr; stdout is the protocol channel.
  */
+import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ToolError } from './errors.js';
 import { PatternCatalog, type LoaderOptions } from './loader.js';
@@ -94,7 +95,9 @@ export function createServer(opts: CreateServerOptions): {
         'Ranked search over the AI-interface UX pattern catalog. Returns pattern ids, intent, ' +
         'MUST-level constraint summaries, and a one-sentence rationale for why each result matched. '
         + 'Empty results include the category map and near-miss suggestions instead of a void.',
-      inputSchema: searchInputShape,
+      // Strict: an argument the tool does not have ("limit", "outputDir") is
+      // rejected by name instead of being dropped silently (amendment 18).
+      inputSchema: z.object(searchInputShape).strict(),
       outputSchema: searchOutputShape,
     },
     async ({ query, category, framework }) => {
@@ -129,7 +132,7 @@ export function createServer(opts: CreateServerOptions): {
         'Generates a known-compliant starting implementation (component + tests + COMPLIANCE.md) ' +
         'from the reference templates, plus the full constraints array and compliance_notes mapping ' +
         'every MUST rule to the code that satisfies it — verify, don\'t trust.',
-      inputSchema: scaffoldInputShape,
+      inputSchema: z.object(scaffoldInputShape).strict(),
       outputSchema: scaffoldOutputShape,
     },
     async ({ pattern_id, framework, options }) => {

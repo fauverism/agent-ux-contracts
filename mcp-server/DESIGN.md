@@ -330,6 +330,96 @@ Approved design, adjusted where implementation proved a decision wrong:
     exit code is the contract a receiver's CI relies on, so the test should
     rely on it too.
 
+17. **Cautions need evidence for one exclusion, and exclusion vocabulary
+    lives in the exclusion text (2026-11-12, NORTH-STAR gap 8).** Supersedes
+    the firing rule in amendment 12. *Measured first:* 100 queries over
+    stdio, five describing an excluded case and five in scope for each
+    pattern. The old rule (any one query token whose best substring hit was
+    a `dontUseWhen` entry) drew the right caution on 31 of 50 excluded-case
+    queries, quoted the wrong exclusion on 2, missed 17, and put a caution on
+    a pattern the query was not about in 46 of the 100.
+    *Vocabulary first.* The misses were wording gaps, but `aliases` and
+    `tags` cannot hold exclusion wording: they name the pattern, so a word
+    placed there raises the pattern's rank and stops counting as a warning.
+    The paraphrase vocabulary went into the `dontUseWhen` entries themselves
+    as clarifying clauses (nine contracts, patch bumps). That alone cut
+    misses to 2 and raised stray cautions to 67 of 100 — more words, same
+    one-word trigger.
+    *Then the rule.* A caution now needs, for a single exclusion entry, at
+    least two query words that appear in that entry and do not name the
+    pattern, with combined rarity (Σ 1/df) of at least `CAUTION_EVIDENCE`.
+    Function words are ignored. The entry with the most evidence is quoted.
+    Matching is at word starts, not anywhere in a word ("ask" ≠ "task",
+    "reversible" ≠ "irreversible"); for caution evidence the word may run at
+    most three letters past the token ("sign" ≠ "significant"). Ranking uses
+    the same word-start rule without the length bound, which also fixes
+    `ask permission before a read-only operation` ranking interruption-cancel
+    first. streaming-response gained the alias "typewriter effect" when the
+    stricter matching changed one ranking case.
+    *Result on the same 100:* 49 right, 0 wrong exclusion, 1 miss, 0 false
+    alarms, 2 queries with a caution on another pattern (one of them
+    defensible: a failed-request query cautions refusal-messaging with "the
+    failure is technical, not policy").
+    *Holdout, written after tuning and not tuned against:* 60 fresh queries.
+    Before: 7 of 30 right, 3 wrong exclusion, 20 missed, 2 false alarms, a
+    stray caution on 26 of 60. After: 3 of 30 right, 27 missed, no false
+    alarm, a stray caution on 1 of 60. So the change buys precision, not
+    recall: a caution that fires can now be believed, and a paraphrase that
+    shares no words with the contract still draws nothing.
+    *Alternatives:* (a) a schema field for exclusion aliases — new contract
+    surface for what clearer exclusion prose already does; (b) keep the
+    one-word trigger and extend stopwords — the false cautions come from
+    ordinary content words, not filler; (c) a stemmer — still deferred, and
+    it would not reach paraphrase; (d) embeddings — the real fix for recall,
+    deferred to v1.1 behind `SearchProvider`. *Why this:* false cautions
+    train agents to skip the field (amendment 12), so precision comes first;
+    recall then grows by harvesting real misses into contract wording, which
+    doubles as documentation. The fuzzy (typo) pass keeps its own rule.
+    Gate: 56 cases added to `evals/cases.ts` with two new expectation kinds,
+    `caution_only` and `no_cautions`.
+
+18. **Bad input gets enough in-band content to recover in one step
+    (2026-11-12).** 53 bad calls were sent over stdio: ids near and far from
+    real ones, unsupported frameworks, invalid options, empty and off-topic
+    queries, wrong shapes. For 16 of them an agent could not recover from
+    the response alone, in four ways. *Unrelated guesses:* `did_you_mean`
+    and `nearest.suggestions` came from a 0.7-threshold fuzzy match that
+    offered three ids for almost any string ("voice-input" → confidence-
+    indicator; a blank id → the first three alphabetically), and listed the
+    wrong pattern first for an alias ("citations" → generation-control).
+    *Dead ends:* an id close to nothing returned an empty `did_you_mean` and
+    told the agent to pick from it. *Unexplained empties:* a query of
+    blanks or filler words, an unsupported `framework`, and a `category`
+    that excluded the match all returned the same shape as "not in the
+    catalog". *Silent drops:* an argument neither tool has (`outputDir`,
+    `limit`) was ignored and the call succeeded.
+    *Decisions.* `did_you_mean` is built best-first from the id with its
+    spelling normalized, then patterns the string names (through the
+    ranker, so aliases resolve), then near-typos at a 0.4 threshold; it is
+    empty when nothing is close. `PATTERN_NOT_FOUND` always carries
+    `available_patterns`, and its `next_action` says not to substitute an
+    unrelated pattern. `FRAMEWORK_UNSUPPORTED` carries `did_you_mean` for a
+    recognizable misspelling ("React", "vanilla-js", "javascript") and
+    otherwise names the porting route (scaffold vanilla; the constraints
+    array is the specification). `OPTIONS_INVALID` adds
+    `available_with_framework` when the option exists for the pattern under
+    another framework. An empty search always carries an `advisory` that
+    says which of four things happened: no searchable words, nothing
+    matched, a filter excluded the match (with what matches without it), or
+    the framework is not one the catalog has. Both tools' input objects are
+    strict, matching the `additionalProperties: false` they already
+    advertised.
+    *Alternatives:* (a) normalize silently (accept "React", "approval_gate")
+    — hides the exact spelling the agent will need again; the error teaches
+    it once; (b) turn an unsupported framework on search into an error —
+    amendment 3 chose a result shape for search and tests rely on it;
+    (c) convert the SDK's input-validation errors into the structured
+    `{ code, message, next_action }` shape — they are raised before the
+    handler runs, so it would mean loosening the input schema; left as is,
+    since each already names the argument and the expectation.
+    *Not changed:* no field was removed or renamed, and no output schema
+    changed; `advisory` already existed and error context is free-form.
+
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.
 

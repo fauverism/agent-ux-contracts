@@ -1,6 +1,6 @@
 # Streaming Response — Vanilla JS compliance
 
-Traces `StreamingResponse.js` against `../pattern.contract.json` (v0.2.1).
+Traces `StreamingResponse.js` against `../pattern.contract.json` (v0.2.2).
 
 ## Constraint → test mapping
 

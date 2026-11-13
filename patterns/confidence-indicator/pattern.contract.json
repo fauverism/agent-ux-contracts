@@ -1,7 +1,7 @@
 {
   "$schema": "../../schema/pattern-contract.schema.json",
   "id": "confidence-indicator",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Confidence Indicator",
   "summary": "Communicate model certainty levels in text or structured output, from high confidence to uncertainty to refusal, so users know how much to trust the response.",
   "status": "draft",
@@ -25,9 +25,9 @@
     "The output mixes factual retrieval with extrapolation or reasoning"
   ],
   "dontUseWhen": [
-    "The model cannot articulate its own uncertainty (no confidence or reasoning metadata available)",
+    "The model cannot articulate its own uncertainty: the API exposes no confidence score, logprobs, or reasoning metadata, so there is no way to get per-answer certainty",
     "All outputs are equally trusted or equally distrusted by design",
-    "Displaying uncertainty would create unwarranted anxiety without actionable recourse"
+    "Displaying uncertainty would create unwarranted anxiety without actionable recourse — it would make users anxious about something they can't do anything about"
   ],
   "anatomy": [
     {

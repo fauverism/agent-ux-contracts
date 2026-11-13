@@ -1,6 +1,6 @@
 # Streaming Response — React compliance
 
-Traces `StreamingResponse.tsx` against `../pattern.contract.json` (v0.2.1).
+Traces `StreamingResponse.tsx` against `../pattern.contract.json` (v0.2.2).
 
 ## Constraint → test mapping
 

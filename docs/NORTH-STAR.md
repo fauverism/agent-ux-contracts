@@ -104,7 +104,7 @@ the launch view. The full list, with evidence per use case, is the gap index:
 | 4 | **The subscribe form posts to an unclaimed Buttondown username.** | `BUTTONDOWN_USERNAME` in `site/lib/site.ts` | Launch blocker |
 | 5 | **The 90-second demo is scripted but not recorded.** | `mcp-server/DEMO.md` | Launch asset |
 | 6 | **No real usage signal.** The search evals are authored, not harvested from real agent queries. | `mcp-server/evals/cases.ts` | Learning gap |
-| 8 | **The "don't use this here" warning is unreliable.** It misses paraphrases and fires on substrings. This is the capability no neighbor has. | [Baseline run](journeys/runs/2026-11-11-baseline.md) | Defect, in scope |
+| 8 | **The "don't use this here" warning only reaches wording the contracts anticipate.** It no longer fires on substrings or single shared words, and it quotes the right exclusion. A paraphrase that shares no words with the exclusion text still draws nothing. This is the capability no neighbor has. | [`mcp-server/DESIGN.md`](../mcp-server/DESIGN.md) amendment 17; `know-when-not-to` journey | Product gap; the full fix is the deferred embeddings provider |
 | 9 | **Some proof is thinner than it reads.** At least one accessibility test is named for a rule it only partly proves. The `contract-auditor` has not been run across the catalog. | [Baseline run](journeys/runs/2026-11-11-baseline.md) | Defect, in scope |
 
 Closed on 2026-11-12: gap 7, the scaffold's verify command failing every test

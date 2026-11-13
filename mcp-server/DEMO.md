@@ -83,7 +83,7 @@ check every rule against a line of code, and run the tests."*
 
 ### 1:22 – 1:30 — Close
 
-Show the response header fields `"version": "0.2.1"` and `"contract_hash": "…"`.
+Show the response header fields `"version": "0.2.2"` and `"contract_hash": "…"`.
 
 Voiceover: *"Version plus content hash in every response — pin them, and
 drift fails your build. Ten patterns, two tools, contracts all the way
