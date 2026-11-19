@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useId, type KeyboardEvent } from 'react';
 
 export type ComposerState = 'empty' | 'composing' | 'over-limit' | 'busy';

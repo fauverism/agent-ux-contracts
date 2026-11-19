@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useId, useState, type ReactNode } from 'react';
 
 export type ThinkingPhase = 'idle' | 'thinking' | 'answering' | 'completed';

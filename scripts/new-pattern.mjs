@@ -114,7 +114,9 @@ TODO: minimal react + vanilla usage snippets.
 TODO: the rules an agent must not violate when scaffolding this pattern.
 `;
 
-const reactTestStub = `import { test, afterEach } from 'node:test';
+const reactTestStub = `/** @jsxRuntime automatic */
+/** @jsxImportSource react */
+import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { render, cleanup } from '@testing-library/react';
 import axe from 'axe-core';

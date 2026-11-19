@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 export type StreamDisplayState =

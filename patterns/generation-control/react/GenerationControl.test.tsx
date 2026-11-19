@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';

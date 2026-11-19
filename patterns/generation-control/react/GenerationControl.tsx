@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useState, type ReactNode } from 'react';
 
 export interface GenerationControlProps {

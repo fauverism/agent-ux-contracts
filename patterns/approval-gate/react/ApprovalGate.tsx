@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 
 export type GateStatus = 'proposed' | 'executing' | 'completed' | 'failed' | 'rejected';

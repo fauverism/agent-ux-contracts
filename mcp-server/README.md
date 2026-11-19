@@ -10,7 +10,12 @@ Two tools over the pattern catalog, stdio transport:
   starting implementation generated deterministically from the reference
   templates: component + tests + COMPLIANCE.md, plus the full constraints
   array and `compliance_notes` mapping every MUST rule to the code anchor
-  that satisfies it. The receiving agent can verify, not just trust.
+  that satisfies it. The receiving agent can verify, not just trust: the
+  response carries a `verify` object (the run command and its dependency
+  list) plus the `setup-dom.mjs` that command imports. React files open with
+  JSX pragma comments, so the command passes whatever the receiver's
+  `tsconfig.json` says about JSX — `"preserve"` (Next.js), `"react"`, or no
+  tsconfig at all.
 
 The server owns no pattern data — it reads `../patterns/*/pattern.contract.json`
 at startup, validates each against `../schema/pattern-contract.schema.json`

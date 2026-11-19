@@ -61,13 +61,14 @@ const TEST_DEPENDENCIES: Record<Framework, string[]> = {
 };
 
 /**
- * Per-file JSX pragmas prepended to every generated .tsx file (DESIGN.md
- * amendment 15). The verify command runs through tsx, which takes its JSX
- * mode from whatever tsconfig.json sits in the receiver's working directory:
+ * Per-file JSX pragmas every React .tsx file carries (DESIGN.md amendments 15
+ * and 19). The verify command runs through tsx, which takes its JSX mode from
+ * whatever tsconfig.json sits in the receiver's working directory:
  * "preserve", "react", or no tsconfig at all compile JSX to
  * React.createElement and every test dies with "React is not defined". The
- * pragmas pin the automatic runtime in the file itself, so the result no
- * longer depends on the receiver's config. Comments only — no code changes.
+ * pragmas pin the automatic runtime in the file itself. They live in the
+ * reference files (enforced by scripts/validate-contracts.mjs), so a scaffold
+ * and a hand-vendored copy behave the same; scaffolding checks, not adds, them.
  */
 export const JSX_PRAGMA = '/** @jsxRuntime automatic */\n/** @jsxImportSource react */\n';
 
@@ -244,8 +245,13 @@ export function scaffoldPattern(
     files = { component: rename(files.component), test: rename(files.test) };
   }
 
-  if (fw === 'react') {
-    files = { component: JSX_PRAGMA + files.component, test: JSX_PRAGMA + files.test };
+  if (fw === 'react' && !(files.component.startsWith(JSX_PRAGMA) && files.test.startsWith(JSX_PRAGMA))) {
+    throw new ToolError(
+      'CONTRACT_INVALID',
+      `${patternId} react reference files do not start with the JSX pragmas; the verify command would depend on the receiver's tsconfig`,
+      'Restore the two pragma lines at the top of the reference .tsx files (npm run validate names the file).',
+      { pattern_id: patternId },
+    );
   }
 
   const emitted: ScaffoldedFile[] = [

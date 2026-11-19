@@ -1,7 +1,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PatternCatalog } from '../src/loader.js';
@@ -417,15 +418,29 @@ test('verify loop: the React verify command passes whatever the receiver tsconfi
   const result = scaffoldPattern(catalog, 'streaming-response', 'react');
   const [bin, ...args] = result.verify!.command.split(' ');
   assert.equal(bin, 'node');
-  for (const jsx of ['react-jsx', 'preserve', 'react']) {
-    const dir = writeCase(`react-verify-${jsx}`, result);
+  // undefined = no tsconfig.json anywhere. That case runs outside this repo
+  // (tsx would otherwise find mcp-server/tsconfig.json walking up), with
+  // node_modules symlinked from the repo root, which holds every verify dep.
+  for (const jsx of ['react-jsx', 'preserve', 'react', undefined]) {
+    const label = jsx ?? 'no-tsconfig';
+    let dir: string;
+    let cleanupDir: string | undefined;
+    if (jsx) {
+      dir = writeCase(`react-verify-${label}`, result);
+      writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { jsx } }));
+    } else {
+      cleanupDir = dir = mkdtempSync(join(tmpdir(), 'auc-verify-'));
+      symlinkSync(join(repoRoot, 'node_modules'), join(dir, 'node_modules'), 'dir');
+      for (const file of result.files) writeFileSync(join(dir, file.path), file.content);
+    }
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ type: 'module' }));
-    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { jsx } }));
     try {
       execFileSync(process.execPath, args, { cwd: dir, stdio: 'pipe', env: nestedTestEnv() });
     } catch (err) {
       const out = (err as { stdout?: Buffer }).stdout?.toString() ?? String(err);
-      assert.fail(`verify command failed with "jsx": "${jsx}":\n${out.slice(-1500)}`);
+      assert.fail(`verify command failed (${label}):\n${out.slice(-1500)}`);
+    } finally {
+      if (cleanupDir) rmSync(cleanupDir, { recursive: true, force: true });
     }
   }
 });

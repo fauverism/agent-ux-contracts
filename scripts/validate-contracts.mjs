@@ -14,6 +14,9 @@
  *      - anatomy export maps (mandatory on `kit` patterns) must name a symbol
  *        for every declared implementation, and each named symbol must exist
  *        in that implementation's source
+ *      - every react/*.tsx file starts with the JSX runtime pragmas, so its
+ *        tests pass whatever the consumer's tsconfig says about JSX
+ *        (mcp-server/DESIGN.md amendments 15 and 19)
  *
  * Exit code 0 = all contracts valid. This is the CI gate.
  */
@@ -27,6 +30,7 @@ const Ajv2020 = _Ajv2020.default ?? _Ajv2020;
 const addFormats = _addFormats.default ?? _addFormats;
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const JSX_PRAGMA = "/** @jsxRuntime automatic */\n/** @jsxImportSource react */\n";
 const patternsDir = join(root, "patterns");
 
 const schema = JSON.parse(
@@ -112,6 +116,20 @@ for (const dirName of patternIds) {
     if (!existsSync(join(implDir, "COMPLIANCE.md"))) {
       fail(dirName, `implementation "${impl}" is missing COMPLIANCE.md`);
       continue;
+    }
+
+    // JSX pragmas: without them, tsx compiles these files with whatever JSX
+    // mode the consumer's tsconfig.json sets, and "preserve" (Next.js) or no
+    // tsconfig fails every test with "React is not defined".
+    if (impl === "react") {
+      for (const file of readdirSync(implDir).filter((f) => f.endsWith(".tsx"))) {
+        if (!readFileSync(join(implDir, file), "utf8").startsWith(JSX_PRAGMA)) {
+          fail(
+            dirName,
+            `react/${file} must start with the JSX pragmas:\n      ${JSX_PRAGMA.trim().replace("\n", "\n      ")}`,
+          );
+        }
+      }
     }
 
     // State coverage: every contract state must be accounted for — in the

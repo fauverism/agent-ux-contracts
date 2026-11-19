@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useId, useState } from 'react';
 
 export type FailureKind = 'network' | 'timeout' | 'overloaded' | 'refusal' | 'tool' | 'unknown';

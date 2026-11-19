@@ -10,7 +10,7 @@ import type { Pattern } from '@/lib/patterns';
 
 const REACT_TEST_DEPS =
   'react react-dom @testing-library/react @testing-library/dom axe-core jsdom global-jsdom tsx typescript';
-const VANILLA_TEST_DEPS = 'jsdom global-jsdom';
+const VANILLA_TEST_DEPS = 'axe-core jsdom global-jsdom';
 
 function Cmd({ text, label }: { text: string; label?: string }) {
   return (
@@ -81,9 +81,11 @@ export function AdoptSection({ pattern }: { pattern: Pattern }) {
       <p className="mt-2 text-sm text-ink-70">
         {hasReact && (
           <>
-            The runner picks up your project&rsquo;s <code>tsconfig.json</code>;
-            it needs <code>&quot;jsx&quot;: &quot;react-jsx&quot;</code>, which
-            any React project already sets.{' '}
+            Each <code>.tsx</code> file opens with JSX pragma comments, so the
+            run does not depend on your <code>tsconfig.json</code>: it passes
+            under Next.js&rsquo;s{' '}
+            <code>&quot;jsx&quot;: &quot;preserve&quot;</code> or with no
+            tsconfig at all.{' '}
           </>
         )}
         {contract.implementations.includes('vanilla') && (

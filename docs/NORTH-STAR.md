@@ -110,9 +110,10 @@ the launch view. The full list, with evidence per use case, is the gap index:
 Closed on 2026-11-12: gap 7, the scaffold's verify command failing every test
 unless the consumer's `tsconfig` set `jsx` to `react-jsx`. Scaffolded React
 files now pin the JSX runtime per file
-([`mcp-server/DESIGN.md`](../mcp-server/DESIGN.md), amendment 15). Reference
-files copied by hand from `patterns/<id>/react` still need `react-jsx`; that
-remainder is tracked in the `zero-install-first-run` journey. The numbers of
+([`mcp-server/DESIGN.md`](../mcp-server/DESIGN.md), amendment 15). On
+2026-11-19 the pragmas moved into the reference files themselves
+(amendment 19), so files copied by hand from `patterns/<id>/react` no longer
+need `react-jsx` either. The numbers of
 the other gaps are unchanged.
 
 Closed on 2026-11-11: there was no CI despite the docs calling the check gate

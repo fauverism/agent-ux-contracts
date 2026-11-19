@@ -315,9 +315,10 @@ Approved design, adjusted where implementation proved a decision wrong:
     edits code rather than comments and trips `noUnusedLocals` under the
     automatic runtime. *Why this:* it is the only option that makes the
     result independent of the receiver's config without touching their
-    project or the command. *Not covered:* the reference files under
-    `patterns/<id>/react` are unchanged, so a hand-vendored copy (the site's
-    adoption section) still needs `"jsx": "react-jsx"`.
+    project or the command. *Not covered at the time:* the reference files
+    under `patterns/<id>/react` were unchanged, so a hand-vendored copy (the
+    site's adoption section) still needed `"jsx": "react-jsx"`. Closed by
+    amendment 19.
 16. **Executed-suite tests strip `NODE_TEST_CONTEXT` (2026-11-12).** Writing
     the regression test for 15 showed that a nested `node --test` started
     from inside node:test inherits `NODE_TEST_CONTEXT`, reports to a parent
@@ -419,6 +420,32 @@ Approved design, adjusted where implementation proved a decision wrong:
     since each already names the argument and the expectation.
     *Not changed:* no field was removed or renamed, and no output schema
     changed; `advisory` already existed and error context is free-form.
+
+19. **The pragmas live in the reference files (2026-11-19).** Amendment 15
+    left the site's vendor route (copy `patterns/<id>/react` by hand) failing
+    every test under `"jsx": "preserve"` or no tsconfig, and the pattern page
+    claimed `react-jsx` is something "any React project already sets".
+    *Decision:* all 20 reference `.tsx` files now start with the two pragma
+    lines. `scaffold_pattern` no longer prepends them; it checks for them and
+    returns `CONTRACT_INVALID` if a reference file lacks them. Scaffold
+    output is byte-identical to before. `scripts/validate-contracts.mjs`
+    fails any `react/*.tsx` without them, and `npm run new-pattern` emits
+    them in the test stub, so a new pattern cannot regress.
+    *Alternatives:* (a) keep prepending in the scaffold and leave the
+    reference files alone — two code paths that must agree, and the vendor
+    route stays broken; (b) have the vendor route write a
+    `tsconfig.verify.json` and pass it with `tsx --tsconfig` — fixes the
+    page but not a copy made any other way, and adds a file and a flag the
+    scaffold route does not need; (c) correct the sentence only — documents
+    the failure instead of removing it.
+    *Why this:* one source, and every route that copies the files inherits
+    the fix. The site's demos import the same files through Next.js, whose
+    default is the automatic runtime; the build is unchanged.
+    *Measured:* the vendor route exactly as the page prints it, for
+    approval-gate (26/26) and interruption-cancel (17/17), in a project with
+    `"jsx": "preserve"`. *Gate:* the existing verify-command test gained a
+    no-tsconfig case, run outside this repo so no ancestor tsconfig is
+    found.
 
 The 19-case scorecard (`npm run eval`, wired into `npm run check`) is the
 regression harness for all of the above: 100% at ship.

@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useId, useState } from 'react';
 
 export type ConfidenceLevel = 'high' | 'moderate' | 'low' | 'conditional' | 'refusal';

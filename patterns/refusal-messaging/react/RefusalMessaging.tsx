@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 export interface RefusalAlternative {

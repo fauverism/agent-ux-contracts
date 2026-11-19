@@ -175,10 +175,11 @@ if behavior moved, and update the impls' trace headers.
   `rm -rf site/.next` and restart dev.
 - **`tsx` reads `tsconfig.json` from the current working directory.** With
   `"jsx": "preserve"`, `"react"`, or no tsconfig, JSX compiles to
-  `React.createElement` and "React is not defined" appears. Scaffolded React
-  files carry per-file JSX pragmas so they are immune (DESIGN.md amendment 15).
-  Reference files copied straight from `patterns/<id>/react` are not: that
-  consumer still needs `"jsx": "react-jsx"` in its own `tsconfig`.
+  `React.createElement` and "React is not defined" appears. Every
+  `patterns/<id>/react/*.tsx` therefore starts with two JSX pragma comments,
+  so scaffolded and hand-copied files work under any consumer tsconfig
+  (DESIGN.md amendments 15 and 19). `npm run validate` fails a React file
+  without them; keep them as the first two lines.
 - **A nested `node --test` inherits `NODE_TEST_CONTEXT` and exits 0 even when
   every test fails.** A test that runs another test suite as a child process
   must strip that variable from the child's environment (see `nestedTestEnv`
