@@ -123,6 +123,10 @@ The parts that make it feel made by a person. Tone: warm, direct, zero marketing
 - **[/styleguide](site/app/styleguide/page.tsx)** — hidden review route (unlinked, noindex): palette swatches, the accent usage contract rendered as MUST/MUST_NOT rules, type scale specimens, a visible 4px-baseline overlay panel, every primitive, and forced light/dark panels side by side. **Review this route before any pages are built.**
 - Root `npm run check` now includes the site typecheck. Build verified: static export, both modes verified in-browser (computed token values checked, not just screenshots).
 
+## Brand voice research rerun (2026-11-19)
+
+Reran the six-prompt brand voice series against `origin/main` at `780306d`. Output: `docs/research/brand-voice-2026-11-19.md`; the earlier `brand-voice.md` is unchanged. The gate was green (`npm run check` exit 0). All 15 attributed quotes in the 2026-11-12 guide are still verbatim. None of its ten copy fixes has been applied. New items: the About page now carries "369 tests run on every change", and `mcp-server/DEMO.md` and `ARCHITECTURE.md` still say "drift fails your build". Proposals only; no site or README copy changed.
+
 ## Proof audit (2026-11-11)
 
 A spot check found `approval-gate`'s `controls-accessible` test asserted only the container. All ten patterns were then audited, MUST by MUST, in both frameworks: would the named test fail if the behavior were removed?
